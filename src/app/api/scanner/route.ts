@@ -2,122 +2,285 @@ import { NextResponse } from 'next/server';
 import { validateHost, isRateLimited, getClientIp } from '@/lib/ssrf-guard';
 import {
   parseAllowlist,
-  parseRequireVerification,
   isAllowedTarget as checkAllowedTarget,
 } from '@/lib/scanner-scope';
+import {
+  canBypassHostValidation,
+  classifyScanRequest,
+  SCAN_DEFINITIONS,
+  type ScanType,
+} from '@/lib/scanner-policy';
+import { createPassiveAdapters } from '@/server/scanner-v2/passive-adapters';
+import {
+  logScanAudit,
+  classifyTarget,
+  sanitizeTargetForLog,
+} from '@/lib/scanner-audit';
 
 /**
- * AEGISGRID — Scanner Proxy (Hardened)
- * Rate-limited, target-validated, scope-restricted
+ * AEGISGRID — Scanner Route (V2 Passive Integration)
+ *
+ * Dual-path routing:
+ *   1. Passive scan types (rdns, whois, subdomains, geoloc, vuln) run
+ *      in-process using Scanner V2 adapters — no external backend needed.
+ *   2. Active scan types (quick, ssl, headers, tech) require an external
+ *      scanner backend (SCANNER_URL + SCANNER_KEY) AND target allowlisting.
+ *      They fail closed otherwise.
+ *
+ * Rate-limited, target-validated, scope-restricted, audit-logged.
  */
+
+// ── Configuration (read once at module load) ─────────────────────────────
 
 const SCANNER_URL = process.env.SCANNER_URL || '';
 const SCANNER_KEY = process.env.SCANNER_KEY || '';
-const SCANNER_REQUIRE_VERIFICATION = parseRequireVerification(
-  process.env.SCANNER_REQUIRE_VERIFICATION,
-);
 const SCANNER_ALLOWED_TARGETS = parseAllowlist(
   process.env.SCANNER_ALLOWED_TARGETS || '',
 );
 
-function isAllowedTarget(target: string): boolean {
-  return checkAllowedTarget(target, SCANNER_ALLOWED_TARGETS, SCANNER_REQUIRE_VERIFICATION);
+const scannerBackendConfigured = Boolean(SCANNER_URL && SCANNER_KEY);
+
+function isExplicitlyAllowlistedTarget(target: string): boolean {
+  // Public /api/scanner active scans require explicit allowlist membership.
+  // Do not honor SCANNER_REQUIRE_VERIFICATION=false here; anonymous public
+  // users may use passive lookups only.
+  return checkAllowedTarget(target, SCANNER_ALLOWED_TARGETS, true);
 }
 
-// The string-based regex previously here matched only literal dotted-quad
-// IPv4, missed every IPv6 form, and never resolved hostnames — so an attacker
-// could bypass it with `target=metadata.example.com` (DNS A → 169.254.169.254),
-// `target=2130706433` (decimal 127.0.0.1), or `target=::1`. Validation now
-// canonicalises the input and resolves hostnames before deciding. See
-// `src/lib/ssrf-guard.ts`.
+// ── Passive adapters singleton ───────────────────────────────────────────
 
-// ── ALLOWED SCAN TYPES (safe subset only) ──
-const ALLOWED_SCANS: Record<string, { endpoint: string; timeout: number }> = {
-  quick:      { endpoint: '/scan/quick',      timeout: 15000 },
-  ssl:        { endpoint: '/scan/ssl',        timeout: 10000 },
-  headers:    { endpoint: '/scan/headers',    timeout: 10000 },
-  rdns:       { endpoint: '/scan/rdns',       timeout: 8000  },
-  subdomains: { endpoint: '/scan/subdomains', timeout: 15000 },
-  tech:       { endpoint: '/scan/tech',       timeout: 15000 },
-  whois:      { endpoint: '/scan/whois',      timeout: 10000 },
-  geoloc:     { endpoint: '/scan/geoloc',     timeout: 8000  },
-  vuln:       { endpoint: '/scan/vuln',       timeout: 90000 },
+const passiveAdapters = createPassiveAdapters();
+
+// ── Active scan proxy timeouts ───────────────────────────────────────────
+
+const ACTIVE_TIMEOUTS: Partial<Record<ScanType, number>> = {
+  quick:   15_000,
+  ssl:     10_000,
+  headers: 10_000,
+  tech:    15_000,
 };
 
-// REMOVED from public access: deep, ports, banner, traceroute
-// These are dangerous in an unauthenticated context:
-//   deep     → scans 65,535 ports (DDoS amplifier)
-//   banner   → harvests software versions from targets using our IP
-//   traceroute → reveals hosting infrastructure
-//   ports    → arbitrary port range scanning
+// ── Route handler ────────────────────────────────────────────────────────
 
 export async function GET(req: Request) {
-  // 1. Check scanner is configured
-  if (!SCANNER_URL || !SCANNER_KEY) {
-    return NextResponse.json({ error: 'Scanner not configured', hint: 'Set SCANNER_URL and SCANNER_KEY in .env' }, { status: 503 });
-  }
+  const startTime = Date.now();
+  const { searchParams } = new URL(req.url);
+  const target = searchParams.get('target')?.trim() ?? '';
+  const scanType = searchParams.get('type') || 'quick';
 
-  // 2. Rate limit by client IP
+  // 1. Rate limit by client IP
   const clientIp = getClientIp(req);
   if (isRateLimited(clientIp, 5, 60_000)) {
+    logScanAudit({
+      scan_type: scanType,
+      target_classification: classifyTarget(target),
+      sanitized_target: sanitizeTargetForLog(target),
+      mode: 'unknown',
+      decision: 'denied',
+      denial_reason: 'RATE_LIMITED',
+      result_status: 429,
+      duration_ms: Date.now() - startTime,
+      client_ip: clientIp,
+    });
+
     return NextResponse.json({
       error: 'Rate limit exceeded',
-      detail: `Maximum 5 scans per minute. Please wait before scanning again.`,
+      code: 'RATE_LIMITED',
+      detail: 'Maximum 5 scans per minute. Please wait before scanning again.',
     }, { status: 429 });
   }
 
-  // 3. Validate params
-  const { searchParams } = new URL(req.url);
-  const target = searchParams.get('target')?.trim();
-  const scanType = searchParams.get('type') || 'quick';
-
+  // 2. Validate params
   if (!target) {
-    return NextResponse.json({ error: 'Missing target parameter' }, { status: 400 });
-  }
+    logScanAudit({
+      scan_type: scanType,
+      target_classification: 'unknown',
+      sanitized_target: '',
+      mode: 'unknown',
+      decision: 'denied',
+      denial_reason: 'MISSING_TARGET',
+      result_status: 400,
+      duration_ms: Date.now() - startTime,
+      client_ip: clientIp,
+    });
 
-  // 4. Block private/internal targets (DNS-resolves before deciding so a
-  //    hostname pointing at a reserved range is rejected, and IPv6 + non-
-  //    canonical IPv4 forms are no longer free bypasses).
-  const guard = await validateHost(target);
-  if (!guard.ok) {
     return NextResponse.json({
-      error: 'Target blocked',
-      detail: `Target validation failed: ${guard.reason}`,
-    }, { status: 403 });
+      error: 'Missing target parameter',
+      code: 'MISSING_TARGET',
+    }, { status: 400 });
   }
 
-  // 5. Enforce verified/allowlisted targets for active scanner backend calls.
-  if (!isAllowedTarget(target)) {
+  // 3. Classify the scan request (passive/active/unknown)
+  const policy = classifyScanRequest(
+    scanType,
+    isExplicitlyAllowlistedTarget(target),
+    scannerBackendConfigured,
+  );
+
+  // 4. If denied by policy, return early with normalized error
+  if (!policy.allowed) {
+    logScanAudit({
+      scan_type: scanType,
+      target_classification: classifyTarget(target),
+      sanitized_target: sanitizeTargetForLog(target),
+      mode: policy.mode,
+      decision: 'denied',
+      denial_reason: policy.code,
+      result_status: policy.denial_status ?? 403,
+      duration_ms: Date.now() - startTime,
+      client_ip: clientIp,
+    });
+
     return NextResponse.json({
-      error: 'Target not verified',
-      detail: SCANNER_ALLOWED_TARGETS.length === 0
-        ? 'Scanner verification is required. Configure SCANNER_ALLOWED_TARGETS with comma-separated exact hosts/IPs or wildcard subdomains (for example: example.com,*.example.com).'
-        : 'Target is not present in SCANNER_ALLOWED_TARGETS.',
-    }, { status: 403 });
+      error: policy.denial_reason,
+      code: policy.code,
+      ...(policy.available_scans ? { available_scans: policy.available_scans } : {}),
+    }, { status: policy.denial_status ?? 403 });
   }
 
-  // 6. Validate scan type (only safe scans allowed)
-  const scanConfig = ALLOWED_SCANS[scanType];
-  if (!scanConfig) {
-    return NextResponse.json({
-      error: 'Scan type not available',
-      detail: `"${scanType}" is restricted. Available: ${Object.keys(ALLOWED_SCANS).join(', ')}`,
-      available_scans: Object.keys(ALLOWED_SCANS),
-    }, { status: 403 });
+  // 5. SSRF / target validation — skip only for vuln CVE/CPE evidence strings
+  if (!canBypassHostValidation(scanType, target)) {
+    const guard = await validateHost(target);
+    if (!guard.ok) {
+      logScanAudit({
+        scan_type: scanType,
+        target_classification: classifyTarget(target),
+        sanitized_target: sanitizeTargetForLog(target),
+        mode: policy.mode,
+        decision: 'denied',
+        denial_reason: 'SSRF_BLOCKED',
+        result_status: 403,
+        duration_ms: Date.now() - startTime,
+        client_ip: clientIp,
+      });
+
+      return NextResponse.json({
+        error: 'Target blocked',
+        code: 'TARGET_BLOCKED',
+        detail: `Target validation failed: ${guard.reason}`,
+      }, { status: 403 });
+    }
   }
 
-  // 7. Execute scan with tight timeout
+  // ── PATH A: Passive scan — run Scanner V2 adapter in-process ──────────
+
+  if (policy.mode === 'passive') {
+    const adapter = passiveAdapters[scanType as ScanType];
+    const definition = SCAN_DEFINITIONS[scanType as ScanType];
+
+    if (!adapter) {
+      // Passive module exists in definitions but has no adapter wired yet
+      logScanAudit({
+        scan_type: scanType,
+        target_classification: classifyTarget(target),
+        sanitized_target: sanitizeTargetForLog(target),
+        mode: 'passive',
+        decision: 'allowed',
+        result_status: 200,
+        duration_ms: Date.now() - startTime,
+        client_ip: clientIp,
+      });
+
+      return NextResponse.json({
+        ok: true,
+        scan_type: scanType,
+        mode: 'passive',
+        status: 'source_unavailable',
+        source: 'aegisgrid-scanner-v2',
+        fetched_at: new Date().toISOString(),
+        data: {},
+      });
+    }
+
+    try {
+      const data = await adapter(target);
+
+      logScanAudit({
+        scan_type: scanType,
+        target_classification: classifyTarget(target),
+        sanitized_target: sanitizeTargetForLog(target),
+        mode: 'passive',
+        decision: 'allowed',
+        result_status: 200,
+        duration_ms: Date.now() - startTime,
+        client_ip: clientIp,
+      });
+
+      return NextResponse.json({
+        ok: true,
+        scan_type: scanType,
+        mode: 'passive',
+        label: definition.label,
+        status: 'ok',
+        source: 'aegisgrid-scanner-v2',
+        fetched_at: new Date().toISOString(),
+        data,
+      });
+    } catch {
+      logScanAudit({
+        scan_type: scanType,
+        target_classification: classifyTarget(target),
+        sanitized_target: sanitizeTargetForLog(target),
+        mode: 'passive',
+        decision: 'allowed',
+        result_status: 502,
+        duration_ms: Date.now() - startTime,
+        client_ip: clientIp,
+      });
+
+      return NextResponse.json({
+        ok: false,
+        error: 'Scan module failed',
+        code: 'ADAPTER_ERROR',
+        scan_type: scanType,
+        mode: 'passive',
+        detail: 'Passive scanner module failed.',
+      }, { status: 502 });
+    }
+  }
+
+  // ── PATH B: Active scan — proxy to external scanner backend ───────────
+  // Policy already verified: target is allowlisted AND backend is configured.
+
+  const timeout = ACTIVE_TIMEOUTS[scanType as ScanType] ?? 15_000;
+
   try {
     const params = new URLSearchParams({ key: SCANNER_KEY, target });
-    const res = await fetch(`${SCANNER_URL}${scanConfig.endpoint}?${params.toString()}`, {
-      signal: AbortSignal.timeout(scanConfig.timeout),
+    const endpoint = `/scan/${scanType}`;
+    const res = await fetch(`${SCANNER_URL}${endpoint}?${params.toString()}`, {
+      signal: AbortSignal.timeout(timeout),
+      redirect: 'manual',
     });
     const data = await res.json();
+
+    logScanAudit({
+      scan_type: scanType,
+      target_classification: classifyTarget(target),
+      sanitized_target: sanitizeTargetForLog(target),
+      mode: 'active',
+      decision: 'allowed',
+      result_status: res.status,
+      duration_ms: Date.now() - startTime,
+      client_ip: clientIp,
+    });
+
     return NextResponse.json(data, { status: res.status });
-  } catch (e: any) {
+  } catch {
+    logScanAudit({
+      scan_type: scanType,
+      target_classification: classifyTarget(target),
+      sanitized_target: sanitizeTargetForLog(target),
+      mode: 'active',
+      decision: 'allowed',
+      result_status: 502,
+      duration_ms: Date.now() - startTime,
+      client_ip: clientIp,
+    });
+
     return NextResponse.json({
       error: 'Scanner unreachable',
-      detail: e.message,
+      code: 'SCANNER_UNREACHABLE',
+      detail: 'Active scanner backend request failed.',
     }, { status: 502 });
   }
 }

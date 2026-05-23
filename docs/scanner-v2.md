@@ -1,17 +1,33 @@
 # Scanner V2 local service
 
-AegisGrid's public Next.js route at `/api/scanner` remains a guarded proxy. Scanner V2 now has a private localhost HTTP runner plus a pure policy core under `src/server/scanner-v2/`.
+AegisGrid's public Next.js route at `/api/scanner` now has dual-path routing:
+
+1. **Passive scans** (rdns, whois, subdomains, geoloc, vuln) run Scanner V2 adapters **in-process** — no external backend required.
+2. **Active scans** (quick, ssl, headers, tech) still proxy to an external scanner backend via `SCANNER_URL` + `SCANNER_KEY`, and require explicit target allowlisting in the public route. They fail closed otherwise.
 
 Current status:
 
 - Policy core: `src/server/scanner-v2/scanner-service.ts`
 - Private HTTP runner: `src/server/scanner-v2/http-runner.ts`
 - Passive adapters: `src/server/scanner-v2/passive-adapters.ts`
-- Tests: `src/server/scanner-v2/*.test.ts`
-- Public Next.js route wiring remains guarded by `SCANNER_URL` + `SCANNER_KEY`.
+- Route policy helpers: `src/lib/scanner-policy.ts`
+- Audit logging: `src/lib/scanner-audit.ts`
+- Tests: `src/server/scanner-v2/*.test.ts`, `src/lib/scanner-policy.test.ts`
+- Public Next.js route: `src/app/api/scanner/route.ts`
 - Active scanner adapters are intentionally not implemented or wired.
 
 ## Run locally
+
+### Passive lookups only (no backend needed)
+
+Passive scan types work out-of-the-box without any scanner backend. Just start the Next.js dev server:
+
+```bash
+npm run dev
+# Then: curl 'http://localhost:3000/api/scanner?type=rdns&target=example.com'
+```
+
+### Full setup with active scans
 
 Configure `.env.local` or the process environment:
 
@@ -51,16 +67,39 @@ Do not log URLs containing the `key` query parameter in production process manag
 
 Execution order is fail-closed:
 
-1. Require the local scanner shared key to be configured.
-2. Require the incoming key to match before target validation or adapter dispatch.
-3. Reject unknown scan types such as `deep`, `banner`, `ports`, or arbitrary ranges.
-4. Validate host/IP targets with the shared SSRF guard before adapters run.
-5. Allow passive modules for public targets without allowlist membership.
-6. Allow `vuln` CVE/CPE evidence strings without host DNS validation because they are not network targets.
-7. Require allowlist / ownership verification before any active module adapter runs.
-8. Return normalized `source_unavailable` placeholders for passive modules without adapters.
-9. Return HTTP 501 for active modules without adapters.
-10. Convert adapter failures into normalized HTTP 502 errors.
+1. Rate-limit by client IP (5 requests/minute).
+2. Validate scan type against the authoritative `SCAN_DEFINITIONS` registry.
+3. Classify scan as passive or active.
+4. **Passive path**: validate host/IP targets with the SSRF guard, then run the in-process adapter. Only the `vuln` module may accept CVE/CPE evidence strings without host validation.
+5. **Active path**: require explicit `SCANNER_ALLOWED_TARGETS` match AND `SCANNER_URL`/`SCANNER_KEY` configuration. If either is missing, fail closed with a clear JSON error. The public route does not use `SCANNER_REQUIRE_VERIFICATION=false` to open active scans.
+6. Return normalized empty results for passive modules without adapters.
+7. Return HTTP 501 for active modules without adapters.
+8. Convert adapter failures into normalized HTTP 502 errors.
+9. All decisions are audit-logged.
+
+## Audit logging
+
+Every scanner request is logged via `src/lib/scanner-audit.ts` as structured JSON to `console.info`.
+
+Log fields:
+- `timestamp` — ISO 8601
+- `scan_type` — requested scan module
+- `target_classification` — ipv4/ipv6/domain/cve/cpe/unknown
+- `sanitized_target` — truncated, control-char-stripped target
+- `mode` — passive/active/unknown
+- `decision` — allowed/denied
+- `denial_reason` — machine-readable code when denied
+- `result_status` — HTTP status returned
+- `duration_ms` — wall-clock duration
+- `client_ip` — forwarded client IP
+
+**Security**: SCANNER_KEY and auth headers are never logged. The `ScanAuditEntry` type does not accept secret fields.
+
+Log prefix: `[AEGIS-AUDIT]` for easy filtering:
+
+```bash
+grep '\[AEGIS-AUDIT\]' /var/log/aegisgrid.log | jq .
+```
 
 ## Passive adapters implemented
 
@@ -85,7 +124,7 @@ Active modules remain classified but unwired:
 - `headers`
 - `tech`
 
-They return HTTP 501 unless explicit adapters are injected in a future slice. Do not wire them until auth, entitlement, ownership verification, audit logging, and rate/concurrency controls exist end-to-end.
+They return a clear JSON error with code `ACTIVE_SCAN_REQUIRES_VERIFICATION` (if target not allowlisted) or `SCANNER_BACKEND_NOT_CONFIGURED` (if backend not set up). Do not wire them until auth, entitlement, ownership verification, audit logging, and rate/concurrency controls exist end-to-end.
 
 ## Safety constraints
 
@@ -106,6 +145,7 @@ Run:
 
 ```bash
 npm test -- src/server/scanner-v2
+npm test -- src/lib/scanner-policy
 npm run lint
 npm run typecheck
 npm run build

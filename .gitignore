@@ -35,7 +35,7 @@ yarn-error.log*
 next-env.d.ts
 
 # Scanner backend (API key in env, not in git)
-scanner/
+/scanner/
 .vercel
 
 # Security - prevent accidental backup commits

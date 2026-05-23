@@ -10,19 +10,21 @@ import {
   Maximize2, Minimize2
 } from 'lucide-react';
 
+// Passive modules run in-process and are available to all users.
+// Active modules require verified target + scanner backend.
 const TABS = [
-  { id: 'scanner', label: 'PORT SCAN', icon: Radar, placeholder: 'IP or hostname', color: '#00E5FF' },
-  { id: 'vuln', label: 'VULN SCAN', icon: Bug, placeholder: 'IP or hostname', color: '#FF3D3D' },
+  { id: 'scanner', label: 'PORT SCAN \u{1F512}', icon: Radar, placeholder: 'IP or hostname (verified targets only)', color: '#00E5FF', mode: 'active' as const },
+  { id: 'vuln', label: 'CVE LOOKUP', icon: Bug, placeholder: 'CVE ID (e.g. CVE-2024-1234)', color: '#FF3D3D', mode: 'passive' as const },
 
-  { id: 'dns', label: 'DNS', icon: Server, placeholder: 'Domain name', color: '#448AFF' },
-  { id: 'whois', label: 'WHOIS', icon: FileText, placeholder: 'Domain name', color: '#FFD700' },
-  { id: 'certs', label: 'CERTS', icon: Lock, placeholder: 'Domain name', color: '#E040FB' },
-  { id: 'threats', label: 'THREATS', icon: AlertTriangle, placeholder: 'IP, domain, or hash', color: '#FF9500' },
-  { id: 'headers', label: 'HEADERS', icon: Code, placeholder: 'URL to inspect', color: '#87CEEB' },
-  { id: 'ssl', label: 'SSL/TLS', icon: Shield, placeholder: 'Domain name', color: '#76FF03' },
-  { id: 'subdomains', label: 'SUBDOMAINS', icon: Layers, placeholder: 'Domain to enumerate', color: '#00BCD4' },
-  { id: 'tech', label: 'TECH DETECT', icon: Fingerprint, placeholder: 'URL to fingerprint', color: '#9C27B0' },
-  { id: 'sweep', label: 'IP SWEEP', icon: Crosshair, placeholder: 'Enter IP address (e.g. 8.8.8.8)', color: '#FF3D3D' },
+  { id: 'dns', label: 'DNS', icon: Server, placeholder: 'Domain name', color: '#448AFF', mode: 'passive' as const },
+  { id: 'whois', label: 'WHOIS', icon: FileText, placeholder: 'Domain or IP', color: '#FFD700', mode: 'passive' as const },
+  { id: 'certs', label: 'CERTS', icon: Lock, placeholder: 'Domain name', color: '#E040FB', mode: 'passive' as const },
+  { id: 'threats', label: 'THREATS', icon: AlertTriangle, placeholder: 'IP, domain, or hash', color: '#FF9500', mode: 'passive' as const },
+  { id: 'headers', label: 'HEADERS \u{1F512}', icon: Code, placeholder: 'Hostname (verified targets only)', color: '#87CEEB', mode: 'active' as const },
+  { id: 'ssl', label: 'SSL/TLS \u{1F512}', icon: Shield, placeholder: 'Domain (verified targets only)', color: '#76FF03', mode: 'active' as const },
+  { id: 'subdomains', label: 'SUBDOMAINS', icon: Layers, placeholder: 'Domain to enumerate (passive CT logs)', color: '#00BCD4', mode: 'passive' as const },
+  { id: 'tech', label: 'TECH \u{1F512}', icon: Fingerprint, placeholder: 'Hostname (verified targets only)', color: '#9C27B0', mode: 'active' as const },
+  { id: 'sweep', label: 'IP SWEEP', icon: Crosshair, placeholder: 'Enter IP address (e.g. 8.8.8.8)', color: '#FF3D3D', mode: 'passive' as const },
 ];
 
 interface OsintPanelProps { isOpen?: boolean; onClose?: () => void; isMobile?: boolean; onSweepVisualize?: (data: any) => void; }
@@ -413,10 +415,23 @@ function OsintPanelInner({ isMobile, onSweepVisualize }: OsintPanelProps) {
 
         {/* Secondary Controls */}
         {activeTab === 'scanner' && (
-          <select value={scanType} onChange={e => setScanType(e.target.value)}
-            className="bg-[var(--bg-primary)]/60 border border-[var(--border-primary)] rounded-lg px-2 py-1.5 text-[10px] font-mono text-[var(--text-muted)] outline-none w-full">
-            <option value="quick">QUICK SCAN</option><option value="deep">DEEP SCAN</option><option value="ports">TOP 1000 PORTS</option>
-          </select>
+          <>
+            <select value={scanType} onChange={e => setScanType(e.target.value)}
+              className="bg-[var(--bg-primary)]/60 border border-[var(--border-primary)] rounded-lg px-2 py-1.5 text-[10px] font-mono text-[var(--text-muted)] outline-none w-full">
+              <option value="quick">QUICK SCAN (verified targets only)</option>
+            </select>
+            <div className="text-[8px] font-mono text-[var(--text-muted)]/60 px-1">
+              🔒 Active scans require target ownership verification
+            </div>
+          </>
+        )}
+        {/* Passive/Active info badge */}
+        {activeTab !== 'scanner' && activeTab !== 'sweep' && (
+          <div className="text-[8px] font-mono px-1" style={{ color: TABS.find(t => t.id === activeTab)?.mode === 'passive' ? '#76FF03' : '#FF9500' }}>
+            {TABS.find(t => t.id === activeTab)?.mode === 'passive'
+              ? '🔓 Passive lookup — no target verification required'
+              : '🔒 Active scan — requires verified target'}
+          </div>
         )}
         {activeTab === 'sweep' && (
           <div className="flex items-center justify-between bg-[var(--bg-primary)]/60 border border-[var(--border-primary)] rounded-lg p-1">

@@ -34,7 +34,7 @@ AegisGrid aggregates open-source intelligence into real-time map layers:
 | 🏗️ Infrastructure | Curated nuclear/critical infrastructure reference dataset |
 | 🌐 Regional intel | Country risk scoring, region dossier/encyclopedia lookups |
 | 📹 CCTV | Public transport/road cameras, curated webcam embeds |
-| 🔬 Scanner proxy | Guarded relay to an external scanner backend (503 when unconfigured) |
+| 🔬 Scanner | Passive lookups (rDNS, WHOIS, subdomains, geoloc, CVE) work without backend; active scans relay to external backend (see [docs/scanner-v2.md](docs/scanner-v2.md)) |
 | 🎈 Balloons | Placeholder — returns empty until a lawful radiosonde source is reviewed |
 | ☢️ Radiation | Placeholder — returns empty until Safecast/EU adapter is reviewed |
 
