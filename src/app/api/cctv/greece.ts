@@ -1,6 +1,6 @@
 import type { CctvCamera } from './types';
 
-const IPCAMLIVE_API_SECRET = '65586c9ba88ef';
+const IPCAMLIVE_API_SECRET = process.env.IPCAMLIVE_API_SECRET || '';
 
 const ATTiki_ODOS_CAMERAS = [
   { alias: 'cam128', name: 'I/C D. Plakentias', city: 'Athens', lat: 38.0208, lng: 23.8578 },
@@ -29,6 +29,7 @@ const GREECE_REGIONAL_CAMERAS: CctvCamera[] = [
 ];
 
 async function fetchIpcamLiveHls(alias: string): Promise<string | null> {
+  if (!IPCAMLIVE_API_SECRET) return null;
   try {
     const res = await fetch(`https://ipcamlive.com/api/v2/getstreamhlsurl?apisecret=${IPCAMLIVE_API_SECRET}&alias=${alias}`, { signal: AbortSignal.timeout(5000) });
     const data = await res.json();
@@ -37,6 +38,7 @@ async function fetchIpcamLiveHls(alias: string): Promise<string | null> {
 }
 
 async function fetchIpcamLiveSnapshot(alias: string): Promise<string | null> {
+  if (!IPCAMLIVE_API_SECRET) return null;
   try {
     const res = await fetch(`https://ipcamlive.com/api/v2/getsnapshoturl?apisecret=${IPCAMLIVE_API_SECRET}&alias=${alias}`, { signal: AbortSignal.timeout(5000) });
     const data = await res.json();

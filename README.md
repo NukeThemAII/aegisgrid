@@ -1,169 +1,257 @@
-<div align="center">
-
-# ⬡ OSIRIS
-
-### Open Source Intelligence & Reconnaissance Integrated System
-
-[![Live Demo](https://img.shields.io/badge/osirisai.live-00E5FF?style=for-the-badge&logo=vercel&logoColor=white)](https://osirislive.app)
-[![Next.js](https://img.shields.io/badge/Next.js-16-black?style=for-the-badge&logo=next.js)](https://nextjs.org)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://typescriptlang.org)
-[![MapLibre](https://img.shields.io/badge/MapLibre_GL-GPU_Rendered-396CB2?style=for-the-badge)](https://maplibre.org)
-[![License](https://img.shields.io/badge/License-MIT-D4AF37?style=for-the-badge)](LICENSE)
-
-**A real-time global intelligence dashboard that aggregates live flight tracking, CCTV networks, earthquake monitoring, conflict zone mapping, and 24/7 news feeds into a single GPU-accelerated interface.**
-
-[Live Demo](https://osirisai.live) · [Report Bug](https://github.com/simplifaisoul/osiris/issues) · [Request Feature](https://github.com/simplifaisoul/osiris/issues) · [Join Discord](https://discord.gg/umBykEpb98)
-
-</div>
-
----
-
-## Overview
-
-Osiris is a production-grade OSINT platform that provides situational awareness across multiple intelligence domains. Built with Next.js 16 and MapLibre GL, every data point is rendered via WebGL for 60fps performance even with thousands of concurrent entities on-screen.
-
-### Key Capabilities
-
-| Domain | Data Points | Sources |
-|--------|------------|---------|
-| **Aviation** | Commercial, Private, Military, Jets | OpenSky Network |
-| **Maritime** | 39 Global Ports, 10 Chokepoints | Static Naval Intel |
-| **CCTV** | 2,000+ Cameras | TfL, WSDOT, Caltrans, NYC DOT, VicRoads + more |
-| **Seismic** | Real-time M2.5+ | USGS Earthquake API |
-| **Fires** | Active Hotspots | NASA FIRMS |
-| **News** | 24/7 Live Streams | 25+ Global Broadcasters |
-| **Weather** | Severe Events | NASA EONET |
-| **Space** | Solar Weather, Satellites | NOAA SWPC, N2YO |
-| **Cyber** | CVE Threats, Vulnerability Scanning | NVD, Custom Scanner |
-| **Conflict** | 13 Active Zones | Static OSINT Intel |
-
----
-
-## Architecture
-
 ```
-┌─────────────────────────────────────────────────┐
-│                  OSIRIS CLIENT                   │
-│  ┌──────────┐  ┌──────────┐  ┌───────────────┐ │
-│  │ MapLibre  │  │  HUD     │  │  RECON Toolkit│ │
-│  │  GL (GPU) │  │ Panels   │  │  Port Scan    │ │
-│  │  WebGL    │  │ Layers   │  │  DNS / WHOIS  │ │
-│  │  Render   │  │ Controls │  │  Vuln Scanner │ │
-│  └──────────┘  └──────────┘  └───────────────┘ │
-├─────────────────────────────────────────────────┤
-│               NEXT.JS API ROUTES                 │
-│  /api/flights  /api/earthquakes  /api/cctv      │
-│  /api/news     /api/fires        /api/maritime  │
-│  /api/gdelt    /api/satellites   /api/weather   │
-│  /api/scanner  /api/sentinel     /api/osint/*   │
-├─────────────────────────────────────────────────┤
-│              EXTERNAL DATA SOURCES               │
-│  OpenSky · USGS · NASA · NOAA · TfL · NVD      │
-│  GDACS · EONET · FIRMS · N2YO · RSS Feeds      │
-└─────────────────────────────────────────────────┘
+     _    _____ ____ ___ ____   ____ ____  ___ ____
+    / \  | ____/ ___|_ _/ ___| / ___|  _ \|_ _|  _ \
+   / _ \ |  _|| |  _ | |\___ \| |  _| |_) || || | | |
+  / ___ \| |__| |_| || | ___) | |_| |  _ < | || |_| |
+ /_/   \_\_____\____|___|____/ \____|_| \_\___|____/
 ```
 
----
+# AegisGrid 🛰️
 
-## Features
+**Global situational intelligence grid.**
 
-### Intelligence Layers
-- **15 toggleable data layers** with real-time entity counts
-- **GPU-accelerated rendering** — all map data rendered via WebGL, not DOM
-- **Progressive loading** — data fetched on-demand when layers are activated
-- **Viewport-aware** — only loads relevant data for the visible region
+A lawful OSINT and situational-awareness dashboard built on MapLibre GL,
+pulling public feeds across geophysics, aviation, maritime, cyber,
+markets, and news into a single GPU-rendered map view — with a guarded
+scanner proxy for authorized recon workflows.
 
-### RECON Toolkit
-- **Port Scanner** — TCP connect scan with service fingerprinting
-- **DNS Lookup** — Full record resolution (A, AAAA, MX, NS, TXT, CNAME)
-- **WHOIS** — Domain/IP registration data
-- **SSL/TLS Inspector** — Certificate chain analysis
-- **IP Intelligence** — Geolocation, ASN, and threat reputation
-- **Vulnerability Scanner** — CVE lookup against NVD database
-
-### Live Broadcast Network
-- **25+ live 24/7 news streams** from global broadcasters
-- Click any news dot on the map to open the live stream
-- Feeds from NBC, CBS, ABC, Sky News, Al Jazeera, France 24, NHK, WION, and more
-
-### Conflict Zone Monitoring
-- **13 active conflict/tension zones** with severity-coded warning markers
-- Active Wars: Ukraine, Gaza, Sudan, Myanmar, DRC, Yemen
-- High Tension: Syria, Lebanon, Sahel, Somalia, Red Sea
-- Elevated: Taiwan Strait, Korean DMZ
-
-### Performance Optimized
-- **75% reduction in edge requests** vs initial release
-- Aggressive polling relaxation (15-30 min intervals for stable data)
-- Static data served from memory (zero external API calls for news feeds)
-- `layerFetchedRef` prevents duplicate API requests
+> ⚠️ This is **not** a hacking tool. See [Safety Model](#-safety-model).
 
 ---
 
-## Quick Start
+## 📡 What it does
+
+AegisGrid aggregates open-source intelligence into real-time map layers:
+
+| Domain | Layers |
+|---|---|
+| 🌍 Geophysics | Earthquakes (USGS), fires (NASA FIRMS), severe weather (EONET), space weather (NOAA SWPC) |
+| ✈️ Aviation | ADS-B flight tracking, satellite TLE orbits (CelesTrak/N2YO) |
+| 🚢 Maritime | Static port/chokepoint data, optional AIS via aisstream.io |
+| 🔒 Cyber OSINT | Passive DNS, RDAP/WHOIS, certificate transparency, MITRE CVE, OTX, Shodan InternetDB sweep |
+| 📰 Intel feeds | GDELT global incidents, RSS news, curated live broadcaster streams |
+| 📈 Markets | Public market/crypto quote endpoints |
+| 🏗️ Infrastructure | Curated nuclear/critical infrastructure reference dataset |
+| 🌐 Regional intel | Country risk scoring, region dossier/encyclopedia lookups |
+| 📹 CCTV | Public transport/road cameras, curated webcam embeds |
+| 🔬 Scanner proxy | Guarded relay to an external scanner backend (503 when unconfigured) |
+| 🎈 Balloons | Placeholder — returns empty until a lawful radiosonde source is reviewed |
+| ☢️ Radiation | Placeholder — returns empty until Safecast/EU adapter is reviewed |
+
+Placeholder routes return `{ status: "source_unavailable" }` — never fake data.
+
+---
+
+## 🛡️ Safety model
+
+AegisGrid is a **defensive research and awareness** tool. The rules are simple:
+
+### ✅ Allowed
+
+- Passive public-data collection with source attribution
+- DNS, RDAP, certificate transparency, public threat-intel, CVE lookups
+- User-authorized scanning through a **separate** backend you own/control
+- Link-outs or embeds only when source terms allow
+
+### 🚫 Not allowed
+
+- Exploit execution, malware, phishing, credential theft, brute force
+- Unauthorized or unauthenticated deep/mass scanning
+- Bypassing paywalls, CAPTCHAs, robots.txt, rate limits, or source ToS
+- Fake telemetry presented as production truth
+
+No exceptions. If a source adapter cannot be verified as lawful, the route
+stays as an empty placeholder.
+
+---
+
+## ⚙️ Stack
+
+| Layer | Tech |
+|---|---|
+| Framework | Next.js 16 (App Router) |
+| UI | React 19, Framer Motion, Lucide icons |
+| Styling | Tailwind CSS 4 |
+| Map engine | MapLibre GL (GPU-rendered via react-map-gl) |
+| Media | HLS.js (live streams), sharp (image processing) |
+| Data libs | rss-parser, satellite.js |
+| Analytics | Vercel Analytics |
+| Language | TypeScript 5 |
+
+---
+
+## 🚀 Quick start
 
 ```bash
-git clone https://github.com/simplifaisoul/osiris.git
-cd osiris
+git clone https://github.com/NukeThemAII/aegisgrid.git
+cd aegisgrid
 npm install
-npm run dev
+cp .env.example .env.local   # edit as needed
+npm run lint                  # must pass
+npm run build                 # must pass
+npm run dev                   # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000)
+Most public layers work **without API keys**. Optional keys (NASA FIRMS,
+OpenSky, OTX, Shodan, etc.) are documented in `.env.example` and
+`docs/sources.md`.
 
-### Environment Variables
+---
 
-Create a `.env.local` file:
+## 🔑 Environment setup
 
-```env
-# Optional — enhances flight data
-OPENSKY_USERNAME=your_username
-OPENSKY_PASSWORD=your_password
+Copy `.env.example` → `.env.local`. Key groups:
 
-# Optional — satellite tracking
-N2YO_API_KEY=your_key
+```
+# ── Core ──────────────────────────────────────────
+NEXT_PUBLIC_APP_NAME=AegisGrid
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+
+# ── Scanner proxy (guarded) ──────────────────────
+SCANNER_URL=             # URL of your private scanner backend
+SCANNER_KEY=             # shared secret
+SCANNER_ALLOWED_TARGETS= # comma-separated exact hosts/IPs or *.example.com
+SCANNER_REQUIRE_VERIFICATION=true  # keep true for public deployments
+
+# ── Optional enrichment API keys ─────────────────
+NASA_FIRMS_MAP_KEY=      AISSTREAM_API_KEY=
+OPENSKY_CLIENT_ID=       OPENSKY_CLIENT_SECRET=
+VIRUSTOTAL_API_KEY=      ABUSEIPDB_API_KEY=
+OTX_API_KEY=             URLSCAN_API_KEY=
+CENSYS_API_ID=           CENSYS_API_SECRET=
+GREYNOISE_API_KEY=       SHODAN_API_KEY=
+N2YO_API_KEY=            IPCAMLIVE_API_SECRET=
+
+# ── Feature flags ────────────────────────────────
+FEATURE_AI_REPORTS=false
+FEATURE_COMMS=false
+FEATURE_PREMIUM=false
+FEATURE_X402=false
 ```
 
-> Most features work without any API keys. The platform is designed to be functional out of the box.
+> 💡 Planned variables for database, auth, Stripe, x402, AI, and Redis
+> exist in `.env.example` but are **not wired up yet**.
 
 ---
 
-## Tech Stack
+## 🔭 Scanner backend constraints
 
-| Layer | Technology |
-|-------|-----------|
-| Framework | Next.js 16 (App Router, Turbopack) |
-| Language | TypeScript 5 |
-| Map Engine | MapLibre GL JS (WebGL) |
-| Animations | Framer Motion |
-| Icons | Lucide React |
-| Styling | Custom CSS Design System |
-| Deployment | Vercel Edge Network |
+`/api/scanner` is **only a guarded proxy**. It does not scan anything itself.
 
----
-
-## Keyboard Shortcuts
-
-| Key | Action |
-|-----|--------|
-| `F` | Toggle flight layers |
-| `E` | Toggle earthquakes |
-| `S` | Toggle satellites |
-| `D` | Toggle day/night cycle |
-| `Escape` | Close panels |
+- Requires both `SCANNER_URL` and `SCANNER_KEY` — returns HTTP 503 otherwise.
+- With `SCANNER_REQUIRE_VERIFICATION=true`, targets must match `SCANNER_ALLOWED_TARGETS` before the proxy calls the scanner backend.
+- `SCANNER_ALLOWED_TARGETS` accepts comma-separated exact hosts/IPs plus wildcard subdomains such as `*.example.com`.
+- Active scanning must run in a **separate private service** you own.
+- That service must also enforce ownership verification or an explicit allowlist before executing any scan.
+- Do not expose a configured scanner proxy on a public deployment until auth/entitlement checks exist; until then, only explicitly allowlisted targets can reach the backend.
 
 ---
 
-## License
+## 📁 Project structure
 
-MIT — see [LICENSE](LICENSE) for details.
+```
+aegisgrid/
+├── src/
+│   ├── app/
+│   │   ├── page.tsx              # main dashboard SPA
+│   │   ├── layout.tsx            # root layout, meta, fonts
+│   │   ├── globals.css           # Tailwind + custom styles
+│   │   └── api/                  # 24 API route directories
+│   │       ├── earthquakes/          USGS feeds
+│   │       ├── fires/                NASA FIRMS + EONET
+│   │       ├── flights/              ADS-B / OpenSky
+│   │       ├── satellites/           TLE / CelesTrak
+│   │       ├── cyber-threats/        threat intel
+│   │       ├── osint/                passive DNS/RDAP/CT/CVE
+│   │       ├── scanner/              guarded proxy (503 default)
+│   │       ├── balloons/             placeholder (empty)
+│   │       ├── radiation/            placeholder (empty)
+│   │       └── ...                   weather, markets, news, etc.
+│   ├── components/               # 14 React components
+│   │   ├── AegisGridMap.tsx          MapLibre map + all layers
+│   │   ├── OsintPanel.tsx            passive cyber lookup UI
+│   │   ├── LiveAlerts.tsx            real-time alert feed
+│   │   ├── IntelFeed.tsx             GDELT/RSS intel stream
+│   │   ├── LayerPanel.tsx            layer toggle sidebar
+│   │   └── ...                       markets, search, camera, etc.
+│   ├── lib/
+│   │   ├── features.ts              feature flag guard
+│   │   ├── html.ts                   popup HTML escaping
+│   │   ├── ssrf-guard.ts            SSRF protection for proxied URLs
+│   │   └── bulgaria-sources.ts      regional source config
+│   └── middleware.ts             # request middleware
+├── docs/
+│   └── sources.md                # source register + licensing notes
+├── public/                       # logos, favicons, manifest, OG image
+├── .env.example                  # all env vars with annotations
+├── Dockerfile                    # container build
+├── docker-compose.yml            # local stack
+└── AGENTS.md                     # AI agent coding guidelines
+```
 
 ---
 
-<div align="center">
+## 📋 Source register
 
-**Built by [simplifaisoul](https://github.com/simplifaisoul)**
+All data sources are documented in [`docs/sources.md`](docs/sources.md) with:
 
-[Join our Discord to be a part of this movement!](https://discord.gg/umBykEpb98)
+- Source URL and attribution requirements
+- API key requirements (none / optional / required)
+- Update cadence and confidence level
+- License/terms notes and current status
 
-</div>
+Placeholder routes (`balloons`, `radiation`) are clearly marked as returning
+empty data until lawful source adapters are reviewed and approved.
+
+---
+
+## 🧪 Quality gates
+
+Every commit must pass:
+
+```bash
+npm run lint    # ESLint 9 + next config
+npm run build   # full Next.js production build
+```
+
+> 📝 The upstream codebase uses broad `any` types in places. Type tightening
+> is planned in small follow-up slices with test coverage — stability first.
+
+---
+
+## 🌿 Branch convention
+
+- Default branch: **`master`** (not `main`)
+- Remote: `origin/master`
+- Feature branches → PR against `master`
+
+---
+
+## 🗺️ Roadmap (next)
+
+- [ ] Auth layer (GitHub/Google OAuth)
+- [ ] Database persistence (PostgreSQL)
+- [ ] Redis job queue for background feed refresh
+- [ ] AI-generated situational reports (feature-flagged)
+- [ ] Stripe/x402 billing for premium tiers
+- [ ] Lawful radiosonde (balloons) source adapter
+- [ ] Radiation monitoring adapter (Safecast / EU networks)
+- [ ] Expanded AIS maritime tracking
+- [ ] Type tightening + unit test coverage
+- [ ] Comms/collaboration features
+
+> None of the above are implemented yet. Feature flags exist but default
+> to `false`. Don't claim otherwise.
+
+---
+
+## 🙏 Attribution
+
+AegisGrid is a fork of the upstream **Osiris** project by
+[simplifaisoul](https://github.com/simplifaisoul). Upstream attribution
+is preserved for license and history clarity. Active product branding,
+repository identity, and ongoing development are AegisGrid.
+
+---
+
+*Built with ☕ and healthy paranoia.*

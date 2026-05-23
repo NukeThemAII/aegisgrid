@@ -1,10 +1,10 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
-const SITE_URL = "https://osirisai.live";
-const SITE_NAME = "OSIRIS";
-const SITE_TITLE = "OSIRIS — Open Source Intelligence Platform | Live Flight Tracking, CCTV, OSINT Tools & More";
-const SITE_DESCRIPTION = "The open-source Palantir alternative. Track 10,000+ aircraft, 2,000 satellites, and worldwide CCTV cameras in real-time on a 3D globe. Run Nmap scans, DNS lookups, WHOIS queries, SSL cert analysis & threat intelligence — all from your browser. 20+ live data feeds including earthquakes, wildfires, nuclear facilities, cyber threats, and global conflicts. Free & open source.";
+const SITE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://aegisgrid.vercel.app";
+const SITE_NAME = "AegisGrid";
+const SITE_TITLE = "AegisGrid — Situational Intelligence Grid";
+const SITE_DESCRIPTION = "A lawful OSINT and situational-awareness dashboard for open geospatial feeds, passive cyber intelligence, market/news context, source attribution, and authorized scanner workflows through a separately configured backend.";
 
 export const viewport: Viewport = {
   themeColor: "#D4AF37",
@@ -18,26 +18,26 @@ export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
     default: SITE_TITLE,
-    template: "%s | OSIRIS Intelligence",
+    template: "%s | AegisGrid",
   },
   description: SITE_DESCRIPTION,
   keywords: [
     // OSINT Tools - Primary focus
     "OSINT tools", "free OSINT tools", "online OSINT toolkit", "OSINT framework",
-    "nmap online", "nmap scanner online", "free nmap scan", "port scanner online",
+    "authorized scanner", "passive reconnaissance", "port intelligence", "scanner proxy",
     "DNS lookup tool", "WHOIS lookup", "reverse DNS", "DNS records",
     "SSL certificate checker", "certificate transparency", "cert lookup",
     "BGP routing lookup", "ASN lookup", "IP geolocation",
     "threat intelligence", "threat intel lookup", "IP reputation check",
-    "network reconnaissance", "recon tools", "penetration testing tools",
-    "cybersecurity tools", "infosec tools", "security scanner",
+    "network reconnaissance", "recon tools", "defensive security tools",
+    "cybersecurity tools", "infosec tools", "authorized security scanner",
     "linux OSINT tools", "kali linux tools online", "OSINT browser tools",
-    
+
     // Intelligence Platform
-    "OSINT", "open source intelligence", "intelligence platform", "global intelligence",
+    "OSINT", "open source intelligence", "situational intelligence grid", "global events",
     "geospatial intelligence", "GEOINT", "SIGINT", "real-time tracking",
     "palantir alternative", "open source palantir", "intelligence dashboard",
-    
+
     // Tracking & Data
     "flight tracker", "aircraft tracking", "ADS-B tracker", "live flight radar",
     "satellite tracking", "ISS tracker", "space station tracker",
@@ -49,13 +49,13 @@ export const metadata: Metadata = {
     "cyber threats dashboard", "CVE tracker",
     "space weather", "solar storm", "GPS jamming",
     "defense stocks", "commodities tracker",
-    
+
     // Brand
-    "osiris", "osirisai", "osirisai.live",
+    "aegisgrid", "AegisGrid", "aegisgrid.vercel.app",
   ],
-  authors: [{ name: "Osiris Project", url: SITE_URL }],
-  creator: "Osiris Project",
-  publisher: "Osiris Project",
+  authors: [{ name: "AegisGrid Project", url: SITE_URL }],
+  creator: "AegisGrid Project",
+  publisher: "AegisGrid Project",
   robots: {
     index: true,
     follow: true,
@@ -69,6 +69,7 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
+      { url: "/aegisgrid.svg", type: "image/svg+xml", sizes: "any" },
       { url: "/favicon-32x32.png", type: "image/png", sizes: "32x32" },
       { url: "/favicon-16x16.png", type: "image/png", sizes: "16x16" },
       { url: "/android-chrome-192x192.png", type: "image/png", sizes: "192x192" },
@@ -77,7 +78,7 @@ export const metadata: Metadata = {
     apple: [
       { url: "/apple-touch-icon.png", sizes: "180x180" },
     ],
-    shortcut: "/favicon.ico",
+    shortcut: "/favicon.svg",
     other: [
       {
         rel: "apple-touch-icon-precomposed",
@@ -90,8 +91,8 @@ export const metadata: Metadata = {
     canonical: SITE_URL,
   },
   openGraph: {
-    title: "OSIRIS — The Open-Source Palantir Alternative | Live Flights, CCTV, Satellites & OSINT Tools",
-    description: "Track 10K+ aircraft, 2K satellites & worldwide CCTV on a 3D globe. Run Nmap, DNS, WHOIS & threat intel scans from your browser. 20+ live intelligence feeds. Free. Open source.",
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
     type: "website",
     siteName: SITE_NAME,
     locale: "en_US",
@@ -101,17 +102,15 @@ export const metadata: Metadata = {
         url: `${SITE_URL}/og-image.png`,
         width: 1200,
         height: 630,
-        alt: "OSIRIS — Open Source Intelligence Platform with Live Tracking & OSINT Tools",
+        alt: "AegisGrid — Situational Intelligence Grid",
         type: "image/png",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "🛰️ OSIRIS — Open Source Palantir Alternative | Live Tracking + OSINT Tools",
-    description: "Track 10K+ flights, satellites & CCTV worldwide. Run Nmap, DNS, WHOIS scans from your browser. 20+ live intel feeds. Free & open source.",
-    creator: "@simplifaisoul",
-    site: "@simplifaisoul",
+    title: "AegisGrid — Situational Intelligence Grid",
+    description: SITE_DESCRIPTION,
     images: [`${SITE_URL}/og-image.png`],
   },
   category: "technology",
@@ -119,7 +118,7 @@ export const metadata: Metadata = {
   other: {
     "apple-mobile-web-app-capable": "yes",
     "apple-mobile-web-app-status-bar-style": "black-translucent",
-    "apple-mobile-web-app-title": "OSIRIS",
+    "apple-mobile-web-app-title": "AEGISGRID",
     "mobile-web-app-capable": "yes",
     "msapplication-TileColor": "#06060C",
     "msapplication-config": "none",
@@ -130,8 +129,8 @@ export const metadata: Metadata = {
 const jsonLd = {
   "@context": "https://schema.org",
   "@type": "WebApplication",
-  name: "OSIRIS — OSINT Toolkit & Intelligence Platform",
-  alternateName: ["OSIRIS", "OsirisAI", "Osiris OSINT"],
+  name: "AegisGrid — Situational Intelligence Grid",
+  alternateName: ["AegisGrid", "AegisGrid OSINT"],
   url: SITE_URL,
   description: SITE_DESCRIPTION,
   applicationCategory: "SecurityApplication",
@@ -144,7 +143,7 @@ const jsonLd = {
     availability: "https://schema.org/InStock",
   },
   featureList: [
-    "Nmap port scanning from the browser — no install required",
+    "Authorized scanner proxy for separately configured defensive scanner backends",
     "DNS record lookup (A, AAAA, MX, NS, TXT, CNAME)",
     "WHOIS domain registration lookup",
     "SSL/TLS certificate transparency search",
@@ -168,7 +167,7 @@ const jsonLd = {
   screenshot: `${SITE_URL}/og-image.png`,
   author: {
     "@type": "Organization",
-    name: "Osiris Project",
+    name: "AegisGrid Project",
     url: SITE_URL,
   },
 };
@@ -187,12 +186,12 @@ export default function RootLayout({
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link rel="icon" href="/favicon.ico" sizes="any" />
+        <link rel="icon" href="/aegisgrid.svg" type="image/svg+xml" sizes="any" />
         <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
         <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
         <link rel="canonical" href={SITE_URL} />
-        
+
         {/* JSON-LD Structured Data */}
         <script
           type="application/ld+json"
@@ -200,7 +199,7 @@ export default function RootLayout({
         />
       </head>
       <body className="antialiased">
-        <ErrorBoundary name="OSIRIS Core">
+        <ErrorBoundary name="AEGISGRID Core">
           {children}
         </ErrorBoundary>
         <Analytics />

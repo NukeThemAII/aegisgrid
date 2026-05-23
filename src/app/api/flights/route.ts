@@ -2,7 +2,7 @@
 import { NextResponse } from 'next/server';
 
 /**
- * OSIRIS — Flight Data API
+ * AEGISGRID — Flight Data API
  * Fetches real-time aircraft positions from adsb.lol (no API key required)
  * Covers 6 global regions for maximum coverage
  */

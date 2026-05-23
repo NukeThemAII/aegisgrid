@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 
 /**
- * OSIRIS — Maritime Intelligence
+ * AEGISGRID — Maritime Intelligence
  * Major global ports, naval bases, and shipping chokepoints.
  * Static dataset — zero external API calls.
  */

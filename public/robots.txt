@@ -1,5 +1,5 @@
-# Osiris Global Intelligence Platform
-# https://osirisai.live
+# AegisGrid — Situational Intelligence Grid
+# https://aegisgrid.vercel.app
 
 User-agent: *
 Allow: /
@@ -7,11 +7,11 @@ Disallow: /api/
 Disallow: /api/scanner
 Disallow: /api/osint/*
 
-# Allow search engines to index the main page
+# Allow search engines to index the main health endpoint
 Allow: /api/health
 
 # Sitemap
-Sitemap: https://osirisai.live/sitemap.xml
+Sitemap: https://aegisgrid.vercel.app/sitemap.xml
 
 # Crawl-delay for respectful indexing
 Crawl-delay: 10

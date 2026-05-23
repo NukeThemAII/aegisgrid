@@ -2,7 +2,7 @@
 import { NextResponse } from 'next/server';
 
 /**
- * OSIRIS — News Intelligence API
+ * AEGISGRID — News Intelligence API
  * Aggregates RSS feeds from major international sources
  * Risk scoring and geo-coordinate mapping
  */
@@ -24,7 +24,7 @@ const BG_NEWS_SOURCES = new Set(['Dnevnik', 'Actualno', 'Mediapool']);
 const SOFIA_COORDS: [number, number] = [42.698, 25.485];
 
 const RSS_FETCH_HEADERS = {
-  'User-Agent': 'Mozilla/5.0 (compatible; OSIRIS/1.0; +https://github.com/simplifaisoul/osiris)',
+  'User-Agent': 'Mozilla/5.0 (compatible; AEGISGRID/1.0; +https://github.com/simplifaisoul/aegisgrid)',
   Accept: 'application/rss+xml, application/xml, text/xml, */*',
 };
 

@@ -60,7 +60,7 @@ export function middleware(request: NextRequest) {
   }
 
   const response = NextResponse.next();
-  
+
   // Attach rate limit headers
   response.headers.set('X-RateLimit-Limit', MAX_REQUESTS_PER_WINDOW.toString());
   response.headers.set('X-RateLimit-Remaining', Math.max(0, MAX_REQUESTS_PER_WINDOW - limitData.count).toString());

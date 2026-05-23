@@ -2,12 +2,46 @@ import { NextResponse } from 'next/server';
 import { validateHost, isRateLimited, getClientIp } from '@/lib/ssrf-guard';
 
 /**
- * OSIRIS — Scanner Proxy (Hardened)
+ * AEGISGRID — Scanner Proxy (Hardened)
  * Rate-limited, target-validated, scope-restricted
  */
 
 const SCANNER_URL = process.env.SCANNER_URL || '';
 const SCANNER_KEY = process.env.SCANNER_KEY || '';
+const SCANNER_REQUIRE_VERIFICATION = process.env.SCANNER_REQUIRE_VERIFICATION !== 'false';
+const SCANNER_ALLOWED_TARGETS = (process.env.SCANNER_ALLOWED_TARGETS || '')
+  .split(',')
+  .map(normalizeAllowlistEntry)
+  .filter(Boolean);
+
+function normalizeAllowlistEntry(value: string): string {
+  const trimmed = value.trim().toLowerCase().replace(/\.$/, '');
+  if (!trimmed) return '';
+  if (trimmed.startsWith('*.')) return trimmed;
+  try {
+    return new URL(trimmed).hostname.toLowerCase().replace(/\.$/, '');
+  } catch {
+    return trimmed;
+  }
+}
+
+function normalizeTarget(value: string): string {
+  return value.trim().toLowerCase().replace(/^\[/, '').replace(/\]$/, '').replace(/\.$/, '');
+}
+
+function isAllowedTarget(target: string): boolean {
+  if (!SCANNER_REQUIRE_VERIFICATION) return true;
+  if (SCANNER_ALLOWED_TARGETS.length === 0) return false;
+
+  const normalizedTarget = normalizeTarget(target);
+  return SCANNER_ALLOWED_TARGETS.some(entry => {
+    if (entry.startsWith('*.')) {
+      const suffix = entry.slice(1);
+      return normalizedTarget.endsWith(suffix) && normalizedTarget !== suffix.slice(1);
+    }
+    return normalizedTarget === entry;
+  });
+}
 
 // The string-based regex previously here matched only literal dotted-quad
 // IPv4, missed every IPv6 form, and never resolved hostnames — so an attacker
@@ -38,7 +72,7 @@ const ALLOWED_SCANS: Record<string, { endpoint: string; timeout: number }> = {
 
 export async function GET(req: Request) {
   // 1. Check scanner is configured
-  if (!SCANNER_KEY) {
+  if (!SCANNER_URL || !SCANNER_KEY) {
     return NextResponse.json({ error: 'Scanner not configured', hint: 'Set SCANNER_URL and SCANNER_KEY in .env' }, { status: 503 });
   }
 
@@ -71,7 +105,17 @@ export async function GET(req: Request) {
     }, { status: 403 });
   }
 
-  // 5. Validate scan type (only safe scans allowed)
+  // 5. Enforce verified/allowlisted targets for active scanner backend calls.
+  if (!isAllowedTarget(target)) {
+    return NextResponse.json({
+      error: 'Target not verified',
+      detail: SCANNER_ALLOWED_TARGETS.length === 0
+        ? 'Scanner verification is required. Configure SCANNER_ALLOWED_TARGETS with comma-separated exact hosts/IPs or wildcard subdomains (for example: example.com,*.example.com).'
+        : 'Target is not present in SCANNER_ALLOWED_TARGETS.',
+    }, { status: 403 });
+  }
+
+  // 6. Validate scan type (only safe scans allowed)
   const scanConfig = ALLOWED_SCANS[scanType];
   if (!scanConfig) {
     return NextResponse.json({
@@ -81,7 +125,7 @@ export async function GET(req: Request) {
     }, { status: 403 });
   }
 
-  // 6. Execute scan with tight timeout
+  // 7. Execute scan with tight timeout
   try {
     const params = new URLSearchParams({ key: SCANNER_KEY, target });
     const res = await fetch(`${SCANNER_URL}${scanConfig.endpoint}?${params.toString()}`, {

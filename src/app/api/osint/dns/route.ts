@@ -51,7 +51,7 @@ export async function GET(req: Request) {
     const aRecords = results.records.A || [];
     const mxRecords = results.records.MX || [];
     const nsRecords = results.records.NS || [];
-    
+
     results.summary = {
       ip_addresses: aRecords.map((r: any) => r.data),
       mail_servers: mxRecords.map((r: any) => r.data),

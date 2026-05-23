@@ -2,7 +2,7 @@
 import { NextResponse } from 'next/server';
 
 /**
- * OSIRIS — Satellite Tracking API
+ * AEGISGRID — Satellite Tracking API
  * Fetches TLE data from multiple sources with fallbacks
  * Computes real-time positions using simplified SGP4
  */
@@ -172,7 +172,7 @@ async function fetchTLEFromSource(source: typeof TLE_SOURCES[0]): Promise<string
   try {
     const res = await fetch(source.url, {
       signal: AbortSignal.timeout(12000),
-      headers: { 'User-Agent': 'OSIRIS-Intelligence-Platform/3.4' },
+      headers: { 'User-Agent': 'AEGISGRID-Intelligence-Platform/3.4' },
     });
     if (!res.ok) return null;
     const text = await res.text();

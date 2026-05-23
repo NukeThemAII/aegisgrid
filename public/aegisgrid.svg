@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">AegisGrid logo</title>
+  <desc id="desc">Circular radar grid with shield and horizon motif on a dark background.</desc>
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="45%" r="65%">
+      <stop offset="0%" stop-color="#101827"/>
+      <stop offset="65%" stop-color="#080b12"/>
+      <stop offset="100%" stop-color="#03050a"/>
+    </radialGradient>
+    <linearGradient id="gold" x1="128" y1="72" x2="384" y2="440" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#f6d875"/>
+      <stop offset="48%" stop-color="#d4af37"/>
+      <stop offset="100%" stop-color="#7c5f16"/>
+    </linearGradient>
+    <linearGradient id="cyan" x1="96" y1="96" x2="416" y2="416" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#00e5ff" stop-opacity="0.95"/>
+      <stop offset="100%" stop-color="#00e676" stop-opacity="0.75"/>
+    </linearGradient>
+    <filter id="softGlow" x="-35%" y="-35%" width="170%" height="170%">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <rect width="512" height="512" rx="96" fill="url(#bg)"/>
+
+  <g fill="none" transform="translate(256 256)">
+    <circle r="184" stroke="#d4af37" stroke-opacity="0.24" stroke-width="2"/>
+    <circle r="136" stroke="#00e5ff" stroke-opacity="0.16" stroke-width="1.5"/>
+    <circle r="88" stroke="#d4af37" stroke-opacity="0.18" stroke-width="1"/>
+    <path d="M-184 0H184M0-184V184" stroke="#d4af37" stroke-opacity="0.12" stroke-width="1"/>
+    <path d="M-130-130L130 130M130-130L-130 130" stroke="#00e5ff" stroke-opacity="0.08" stroke-width="1"/>
+    <path d="M0-184 A184 184 0 0 1 159 92" stroke="url(#cyan)" stroke-width="4" stroke-linecap="round" filter="url(#softGlow)"/>
+    <path d="M0-168 L110-126 L96 58 C83 148 35 200 0 222 C-35 200-83 148-96 58 L-110-126 Z" fill="#0b1220" fill-opacity="0.78" stroke="url(#gold)" stroke-width="8" stroke-linejoin="round" filter="url(#softGlow)"/>
+    <path d="M-68 22 C-28-8 28-8 68 22" stroke="url(#cyan)" stroke-width="8" stroke-linecap="round"/>
+    <path d="M-58 72 H58" stroke="#d4af37" stroke-opacity="0.95" stroke-width="6" stroke-linecap="round"/>
+    <path d="M0-118 V154" stroke="#d4af37" stroke-opacity="0.34" stroke-width="2"/>
+    <circle r="16" fill="#d4af37"/>
+    <circle r="5" fill="#04060c"/>
+  </g>
+</svg>

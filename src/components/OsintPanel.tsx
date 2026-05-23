@@ -193,7 +193,7 @@ function OsintPanelInner({ isMobile, onSweepVisualize }: OsintPanelProps) {
       const vulns = r.vulnerabilities || r.vulns || r.cves || [];
       const exploits = vulns.filter((v: any) => v.is_exploit);
       const regularVulns = vulns.filter((v: any) => !v.is_exploit);
-      
+
       return (
         <div>
           <SectionHeader title="VULNERABILITY ASSESSMENT" icon={Bug} color="#FF3D3D" />
@@ -214,7 +214,7 @@ function OsintPanelInner({ isMobile, onSweepVisualize }: OsintPanelProps) {
               ))}
             </div>
           )}
-          
+
           {exploits.length > 0 && (
             <div className="mt-4">
               <SectionHeader title={`POSSIBLE EXPLOITS (${exploits.length})`} icon={AlertTriangle} color="#FF9500" />
@@ -234,7 +234,7 @@ function OsintPanelInner({ isMobile, onSweepVisualize }: OsintPanelProps) {
               </div>
             </div>
           )}
-          
+
           {(!Array.isArray(vulns) || vulns.length === 0) && renderFallback()}
         </div>
       );
@@ -371,9 +371,9 @@ function OsintPanelInner({ isMobile, onSweepVisualize }: OsintPanelProps) {
         {TABS.filter(t => t.id === 'sweep').map(tab => (
           <button key={tab.id} onClick={() => { setActiveTab(tab.id); setQuery(''); setResults(null); setError(''); }}
             className={`flex items-center justify-center gap-2 px-3 py-3 rounded-lg text-[12px] font-mono tracking-widest font-bold transition-all border ${activeTab === tab.id ? 'border-opacity-60 bg-opacity-20' : 'border-[var(--border-secondary)] hover:bg-[var(--hover-accent)]'}`}
-            style={{ 
-              borderColor: activeTab === tab.id ? tab.color : 'rgba(255,61,61,0.3)', 
-              backgroundColor: activeTab === tab.id ? `${tab.color}20` : 'rgba(255,61,61,0.05)', 
+            style={{
+              borderColor: activeTab === tab.id ? tab.color : 'rgba(255,61,61,0.3)',
+              backgroundColor: activeTab === tab.id ? `${tab.color}20` : 'rgba(255,61,61,0.05)',
               color: activeTab === tab.id ? tab.color : tab.color,
               boxShadow: activeTab === tab.id ? `0 0 15px ${tab.color}30` : 'none'
             }}>
@@ -410,7 +410,7 @@ function OsintPanelInner({ isMobile, onSweepVisualize }: OsintPanelProps) {
             {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'SCAN'}
           </button>
         </div>
-        
+
         {/* Secondary Controls */}
         {activeTab === 'scanner' && (
           <select value={scanType} onChange={e => setScanType(e.target.value)}
@@ -698,7 +698,7 @@ function OsintPanelInner({ isMobile, onSweepVisualize }: OsintPanelProps) {
         <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border-secondary)] bg-[#111]">
           <div className="flex items-center gap-3">
             <Radar className="w-5 h-5 text-[var(--cyan-primary)]" />
-            <span className="hud-text text-[16px] text-[var(--text-primary)]">OSIRIS RECON TOOLKIT</span>
+            <span className="hud-text text-[16px] text-[var(--text-primary)]">AEGIS RECON TOOLKIT</span>
             <span className="gotham-tag gotham-tag--info" style={{ fontSize: '9px' }}>FULL SCREEN</span>
             <span className="gotham-tag gotham-tag--classified" style={{ fontSize: '8px' }}>{TABS.length} MODULES</span>
           </div>
@@ -728,7 +728,7 @@ function OsintPanelInner({ isMobile, onSweepVisualize }: OsintPanelProps) {
           <button onClick={() => setIsFullScreen(true)} className="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors" title="Full Screen">
              <Maximize2 className="w-3.5 h-3.5" />
           </button>
-          <div className="w-1.5 h-1.5 rounded-full bg-[var(--cyan-primary)] animate-osiris-pulse" />
+          <div className="w-1.5 h-1.5 rounded-full bg-[var(--cyan-primary)] animate-aegisgrid-pulse" />
           <button onClick={() => setExpanded(!expanded)}>
             {expanded ? <ChevronUp className="w-3.5 h-3.5 text-[var(--text-muted)]" /> : <ChevronDown className="w-3.5 h-3.5 text-[var(--text-muted)]" />}
           </button>

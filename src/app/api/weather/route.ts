@@ -2,7 +2,7 @@
 import { NextResponse } from 'next/server';
 
 /**
- * OSIRIS — Severe Weather & Anomalies API
+ * AEGISGRID — Severe Weather & Anomalies API
  * Fetches active natural events from NASA EONET (Earth Observatory Natural Event Tracker)
  * Tracks: Severe Storms (Hurricanes/Typhoons), Volcanoes, Sea Ice
  */
@@ -25,7 +25,7 @@ export async function GET() {
       if (!geom || geom.type !== 'Point') continue; // Skip polygons for now
 
       const category = event.categories?.[0]?.id || 'unknown';
-      
+
       // We already track wildfires via FIRMS, so we skip EONET wildfires
       if (category === 'wildfires') continue;
 

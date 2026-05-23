@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
 
 /**
- * OSIRIS — Global Incidents API (GDELT Fallback / RSS OSINT Mapper)
+ * AEGISGRID — Global Incidents API (GDELT Fallback / RSS OSINT Mapper)
  * Since GDELT v2 Geo is frequently down (404/Timeout), this fallback
  * aggregates global news RSS (BBC, Al Jazeera, etc.) and performs
  * lightweight keyword geo-mapping to generate incident points.
@@ -64,23 +64,23 @@ export async function GET() {
         const res = await fetch(feed.url, { signal: AbortSignal.timeout(5000) });
         if (!res.ok) continue;
         const xml = await res.text();
-        
+
         // Very rudimentary regex to extract items to avoid heavy XML parser deps
         const items = xml.match(/<item>([\s\S]*?)<\/item>/gi) || [];
-        
+
         for (const item of items) {
           const titleMatch = item.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>/i) || item.match(/<title>(.*?)<\/title>/i);
           const linkMatch = item.match(/<link>(.*?)<\/link>/i);
           const descMatch = item.match(/<description><!\[CDATA\[(.*?)\]\]><\/description>/i) || item.match(/<description>(.*?)<\/description>/i);
-          
+
           if (!titleMatch || !linkMatch) continue;
-          
+
           const title = titleMatch[1];
           const link = linkMatch[1];
           const desc = descMatch ? descMatch[1] : '';
-          
+
           const textToSearch = (title + ' ' + desc).toLowerCase();
-          
+
           // Check if it's a conflict event
           const isConflict = CONFLICT_KEYWORDS.some(kw => textToSearch.includes(kw));
           if (!isConflict) continue;

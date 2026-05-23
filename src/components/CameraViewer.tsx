@@ -17,7 +17,7 @@ export default function CameraViewer({ camera, onClose, onLocate }: CameraViewer
   const [error, setError] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [fullscreen, setFullscreen] = useState(false);
-  
+
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
 
@@ -97,16 +97,16 @@ export default function CameraViewer({ camera, onClose, onLocate }: CameraViewer
         exit={{ opacity: 0, scale: 0.95 }}
         transition={{ duration: 0.3 }}
         className={`fixed z-[500] ${
-          fullscreen 
-            ? 'inset-2 md:inset-4' 
+          fullscreen
+            ? 'inset-2 md:inset-4'
             : 'bottom-[70px] left-2 right-2 md:bottom-6 md:right-6 md:left-auto md:w-[420px]'
         }`}
       >
-        <div className="glass-panel osiris-glow overflow-hidden h-full flex flex-col" style={{ borderColor: 'rgba(57, 255, 20, 0.3)' }}>
+        <div className="glass-panel aegisgrid-glow overflow-hidden h-full flex flex-col" style={{ borderColor: 'rgba(57, 255, 20, 0.3)' }}>
           {/* Header */}
           <div className="flex items-center justify-between px-3 md:px-4 py-2 md:py-3 border-b border-[var(--border-secondary)] bg-black/40">
             <div className="flex items-center gap-2 flex-1 min-w-0">
-              <div className="w-2 h-2 rounded-full bg-[#39FF14] animate-osiris-pulse flex-shrink-0" />
+              <div className="w-2 h-2 rounded-full bg-[#39FF14] animate-aegisgrid-pulse flex-shrink-0" />
               <Camera className="w-3.5 h-3.5 text-[#39FF14] flex-shrink-0" />
               <div className="min-w-0">
                 <h3 className="text-[10px] md:text-[11px] font-mono font-bold text-[#39FF14] tracking-wider truncate">{camera.name}</h3>
@@ -197,7 +197,7 @@ export default function CameraViewer({ camera, onClose, onLocate }: CameraViewer
             {/* Live indicator */}
             {!error && !loading && !externalOnly && (
               <div className="absolute top-2 left-2 flex items-center gap-1.5 bg-black/70 backdrop-blur-sm px-2 py-1 rounded">
-                <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-osiris-pulse" />
+                <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-aegisgrid-pulse" />
                 <span className="text-[7px] font-mono text-white tracking-widest">
                   {streamType === 'jpg' ? 'LIVE SNAPSHOT' : 'LIVE VIDEO'}
                 </span>
