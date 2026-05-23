@@ -1,5 +1,10 @@
 import { NextResponse } from 'next/server';
 import { validateHost, isRateLimited, getClientIp } from '@/lib/ssrf-guard';
+import {
+  parseAllowlist,
+  parseRequireVerification,
+  isAllowedTarget as checkAllowedTarget,
+} from '@/lib/scanner-scope';
 
 /**
  * AEGISGRID — Scanner Proxy (Hardened)
@@ -8,39 +13,15 @@ import { validateHost, isRateLimited, getClientIp } from '@/lib/ssrf-guard';
 
 const SCANNER_URL = process.env.SCANNER_URL || '';
 const SCANNER_KEY = process.env.SCANNER_KEY || '';
-const SCANNER_REQUIRE_VERIFICATION = process.env.SCANNER_REQUIRE_VERIFICATION !== 'false';
-const SCANNER_ALLOWED_TARGETS = (process.env.SCANNER_ALLOWED_TARGETS || '')
-  .split(',')
-  .map(normalizeAllowlistEntry)
-  .filter(Boolean);
-
-function normalizeAllowlistEntry(value: string): string {
-  const trimmed = value.trim().toLowerCase().replace(/\.$/, '');
-  if (!trimmed) return '';
-  if (trimmed.startsWith('*.')) return trimmed;
-  try {
-    return new URL(trimmed).hostname.toLowerCase().replace(/\.$/, '');
-  } catch {
-    return trimmed;
-  }
-}
-
-function normalizeTarget(value: string): string {
-  return value.trim().toLowerCase().replace(/^\[/, '').replace(/\]$/, '').replace(/\.$/, '');
-}
+const SCANNER_REQUIRE_VERIFICATION = parseRequireVerification(
+  process.env.SCANNER_REQUIRE_VERIFICATION,
+);
+const SCANNER_ALLOWED_TARGETS = parseAllowlist(
+  process.env.SCANNER_ALLOWED_TARGETS || '',
+);
 
 function isAllowedTarget(target: string): boolean {
-  if (!SCANNER_REQUIRE_VERIFICATION) return true;
-  if (SCANNER_ALLOWED_TARGETS.length === 0) return false;
-
-  const normalizedTarget = normalizeTarget(target);
-  return SCANNER_ALLOWED_TARGETS.some(entry => {
-    if (entry.startsWith('*.')) {
-      const suffix = entry.slice(1);
-      return normalizedTarget.endsWith(suffix) && normalizedTarget !== suffix.slice(1);
-    }
-    return normalizedTarget === entry;
-  });
+  return checkAllowedTarget(target, SCANNER_ALLOWED_TARGETS, SCANNER_REQUIRE_VERIFICATION);
 }
 
 // The string-based regex previously here matched only literal dotted-quad

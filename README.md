@@ -210,8 +210,10 @@ empty data until lawful source adapters are reviewed and approved.
 Every commit must pass:
 
 ```bash
-npm run lint    # ESLint 9 + next config
-npm run build   # full Next.js production build
+npm run test   # Vitest unit tests
+npm run lint   # ESLint 9 + next config
+npm run typecheck
+npm run build  # full Next.js production build
 ```
 
 > 📝 The upstream codebase uses broad `any` types in places. Type tightening
