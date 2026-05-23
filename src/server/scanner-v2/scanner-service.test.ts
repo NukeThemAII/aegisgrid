@@ -114,6 +114,19 @@ describe('scanner v2 service policy', () => {
     expect(result.body.fetched_at).toBe('2026-01-02T03:04:05.000Z');
   });
 
+  it('allows passive vuln evidence targets without host validation', async () => {
+    const validateTarget = vi.fn(async () => ({ ok: false, reason: 'would be invalid hostname' }));
+    const vuln = vi.fn(async () => ({ status: 'ok', cve_id: 'CVE-2024-1234' }));
+    const service = createTestService({ validateTarget, adapters: { vuln } });
+
+    const result = await service.scan({ type: 'vuln', target: 'CVE-2024-1234', key: 'scanner-secret' });
+
+    expect(result.status).toBe(200);
+    expect(result.body.ok).toBe(true);
+    expect(vuln).toHaveBeenCalledWith('CVE-2024-1234');
+    expect(validateTarget).not.toHaveBeenCalled();
+  });
+
   it('denies active modules unless the target is verified or allowlisted', async () => {
     const quick = vi.fn();
     const service = createTestService({ adapters: { quick } });

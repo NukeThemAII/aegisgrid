@@ -15,8 +15,8 @@
  * Adapters are injected via the factory so they can be wired up incrementally.
  */
 
-import { isAllowedTarget } from '@/lib/scanner-scope';
-import { validateHost } from '@/lib/ssrf-guard';
+import { isAllowedTarget } from '../../lib/scanner-scope';
+import { validateHost } from '../../lib/ssrf-guard';
 
 // ────────────────────────────────────────────────────────────────────────────
 // Scan definitions
@@ -68,6 +68,11 @@ export function scanTypeFromPath(path: string): ScanType | null {
   const candidate = match[1];
   if (KNOWN_SCAN_TYPES.has(candidate)) return candidate as ScanType;
   return null;
+}
+
+function isPassiveVulnEvidenceTarget(scanType: ScanType, target: string): boolean {
+  if (scanType !== 'vuln') return false;
+  return /^CVE-\d{4}-\d{4,}$/i.test(target) || /^cpe:/i.test(target);
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -172,15 +177,17 @@ export function createScannerService(config: ScannerServiceConfig): ScannerServi
     const definition = SCAN_DEFINITIONS[scanType];
 
     // ── 4. SSRF / target validation ─────────────────────────────────────
-    const validation = await validateTarget(target);
-    if (!validation.ok) {
-      return {
-        status: 403,
-        body: { ok: false, error: 'target blocked', reason: validation.reason },
-      };
+    if (!isPassiveVulnEvidenceTarget(scanType, target)) {
+      const validation = await validateTarget(target);
+      if (!validation.ok) {
+        return {
+          status: 403,
+          body: { ok: false, error: 'target blocked', reason: validation.reason },
+        };
+      }
     }
 
-    // ── 4. Active-module allowlist gate ──────────────────────────────────
+    // ── 5. Active-module allowlist gate ──────────────────────────────────
     if (definition.mode === 'active') {
       const allowed = isAllowedTarget(target, allowlist, requireVerification);
       if (!allowed) {
@@ -191,7 +198,7 @@ export function createScannerService(config: ScannerServiceConfig): ScannerServi
       }
     }
 
-    // ── 5. Adapter dispatch ─────────────────────────────────────────────
+    // ── 6. Adapter dispatch ─────────────────────────────────────────────
     const adapter = adapters[scanType];
     const fetchedAt = now().toISOString();
 

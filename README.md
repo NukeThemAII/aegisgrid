@@ -108,10 +108,12 @@ NEXT_PUBLIC_APP_NAME=AegisGrid
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 
 # ── Scanner proxy (guarded) ──────────────────────
-SCANNER_URL=             # URL of your private scanner backend
+SCANNER_URL=http://127.0.0.1:4007  # URL of your private scanner backend
 SCANNER_KEY=             # shared secret
 SCANNER_ALLOWED_TARGETS= # comma-separated exact hosts/IPs or *.example.com
 SCANNER_REQUIRE_VERIFICATION=true  # keep true for public deployments
+SCANNER_V2_HOST=127.0.0.1
+SCANNER_V2_PORT=4007
 
 # ── Optional enrichment API keys ─────────────────
 NASA_FIRMS_MAP_KEY=      AISSTREAM_API_KEY=
@@ -143,8 +145,10 @@ FEATURE_X402=false
 - `SCANNER_ALLOWED_TARGETS` accepts comma-separated exact hosts/IPs plus wildcard subdomains such as `*.example.com`.
 - Active scanning must run in a **separate private service** you own.
 - That service must also enforce ownership verification or an explicit allowlist before executing any scan.
-- Scanner V2 has started as a tested local-service policy core in [`src/server/scanner-v2/`](src/server/scanner-v2/) and is documented in [`docs/scanner-v2.md`](docs/scanner-v2.md).
-- The skeleton currently has no real active scanner adapters; passive modules return normalized placeholders until lawful source adapters are wired.
+- Scanner V2 now has a private localhost HTTP runner and passive adapters under [`src/server/scanner-v2/`](src/server/scanner-v2/), documented in [`docs/scanner-v2.md`](docs/scanner-v2.md).
+- Run it with `npm run scanner:v2` after setting `SCANNER_KEY`; default bind is `127.0.0.1:4007`.
+- Passive adapters are wired for RDNS, RDAP/WHOIS, CT subdomains, geolocation, and CVE/CPE evidence correlation.
+- Active adapters remain intentionally unwired and return 501 until auth/entitlement/ownership verification and audit logging exist end-to-end.
 - Do not expose a configured scanner proxy on a public deployment until auth/entitlement checks exist; until then, only explicitly allowlisted targets can reach the backend.
 
 ---
@@ -182,7 +186,7 @@ aegisgrid/
 │   │   ├── ssrf-guard.ts            SSRF protection for proxied URLs
 │   │   └── bulgaria-sources.ts      regional source config
 │   ├── server/
-│   │   └── scanner-v2/              local scanner service policy skeleton
+│   │   └── scanner-v2/              private runner + passive adapters
 │   └── proxy.ts                  # API request proxy / rate limiter
 ├── docs/
 │   ├── scanner-v2.md             # Scanner V2 local service notes
@@ -236,7 +240,7 @@ npm run build  # full Next.js production build
 
 ## 🗺️ Roadmap (next)
 
-- [ ] Scanner V2 adapters + private local HTTP runner (policy core is tested)
+- [ ] Scanner V2 proxy integration + active ownership verification gate
 - [ ] Auth layer (GitHub/Google OAuth)
 - [ ] Database persistence (PostgreSQL)
 - [ ] Redis job queue for background feed refresh

@@ -1,52 +1,91 @@
-# Scanner V2 local service skeleton
+# Scanner V2 local service
 
-AegisGrid's public Next.js route at `/api/scanner` remains a guarded proxy. The Scanner V2 work starts in `src/server/scanner-v2/` as a local-service policy core that can be wrapped by a private localhost or Docker-network HTTP server later.
+AegisGrid's public Next.js route at `/api/scanner` remains a guarded proxy. Scanner V2 now has a private localhost HTTP runner plus a pure policy core under `src/server/scanner-v2/`.
 
 Current status:
 
-- Implemented: `src/server/scanner-v2/scanner-service.ts`
-- Tests: `src/server/scanner-v2/scanner-service.test.ts`
-- Public Next.js route wiring: deferred; `/api/scanner` still requires `SCANNER_URL` and `SCANNER_KEY` and keeps its existing allowlist gate.
-- Real scanner adapters: deferred. No port scanning or active network probing is implemented in this skeleton.
+- Policy core: `src/server/scanner-v2/scanner-service.ts`
+- Private HTTP runner: `src/server/scanner-v2/http-runner.ts`
+- Passive adapters: `src/server/scanner-v2/passive-adapters.ts`
+- Tests: `src/server/scanner-v2/*.test.ts`
+- Public Next.js route wiring remains guarded by `SCANNER_URL` + `SCANNER_KEY`.
+- Active scanner adapters are intentionally not implemented or wired.
 
-## Policy model
+## Run locally
 
-The local service accepts the same endpoint shape the proxy expects:
+Configure `.env.local` or the process environment:
 
-```txt
-GET /scan/:type?key=<SCANNER_KEY>&target=<host-or-ip>
+```env
+SCANNER_KEY=change-me
+SCANNER_URL=http://127.0.0.1:4007
+SCANNER_ALLOWED_TARGETS=example.com,*.example.com
+SCANNER_REQUIRE_VERIFICATION=true
+SCANNER_V2_HOST=127.0.0.1
+SCANNER_V2_PORT=4007
+SCANNER_V2_ALLOW_NON_LOOPBACK=false
 ```
 
-The pure service exposes `handleUrl()` for this shape and `scan()` for tests/adapters.
+Start the private runner:
+
+```bash
+npm run scanner:v2
+```
+
+Default binding is `127.0.0.1:4007`. The runner refuses non-loopback bind hosts unless `SCANNER_V2_ALLOW_NON_LOOPBACK=true` is set. Only use that escape hatch on a private network you control.
+
+Health check:
+
+```bash
+curl http://127.0.0.1:4007/health
+```
+
+Scan shape:
+
+```txt
+GET /scan/:type?key=<SCANNER_KEY>&target=<host-or-ip-or-passive-evidence>
+```
+
+Do not log URLs containing the `key` query parameter in production process managers.
+
+## Policy model
 
 Execution order is fail-closed:
 
 1. Require the local scanner shared key to be configured.
 2. Require the incoming key to match before target validation or adapter dispatch.
 3. Reject unknown scan types such as `deep`, `banner`, `ports`, or arbitrary ranges.
-4. Validate the target with the shared SSRF guard before any adapter runs.
+4. Validate host/IP targets with the shared SSRF guard before adapters run.
 5. Allow passive modules for public targets without allowlist membership.
-6. Require allowlist / ownership verification before any active module adapter runs.
-7. Return normalized `source_unavailable` placeholders for passive modules without adapters.
-8. Return HTTP 501 for active modules without adapters.
-9. Convert adapter failures into normalized HTTP 502 errors.
+6. Allow `vuln` CVE/CPE evidence strings without host DNS validation because they are not network targets.
+7. Require allowlist / ownership verification before any active module adapter runs.
+8. Return normalized `source_unavailable` placeholders for passive modules without adapters.
+9. Return HTTP 501 for active modules without adapters.
+10. Convert adapter failures into normalized HTTP 502 errors.
 
-## Scan classification
+## Passive adapters implemented
 
-Passive modules currently classified as public-data / no direct target probing:
+These adapters use only DNS or fixed public data-source endpoints. They do not probe target services.
 
-- `rdns`
-- `whois`
-- `subdomains`
-- `geoloc`
-- `vuln` (passive CVE correlation only; no exploit execution)
+| Scan | Source | Behavior |
+| --- | --- | --- |
+| `rdns` | Node DNS resolver | IP reverse lookup; hostname A/AAAA lookup then reverse each IP; per-record errors captured |
+| `whois` | `https://rdap.org` | RDAP domain/IP lookup with normalized handle/status/events |
+| `subdomains` | `https://crt.sh` | CT JSON lookup for domains only; deduplicates, strips wildcards, filters to requested domain, bounds results |
+| `geoloc` | `http://ip-api.com` free endpoint | IP geolocation; hostnames resolve to public IPs first; source errors captured |
+| `vuln` | `https://cveawg.mitre.org` | CVE ID lookup only; CPE strings recorded for future NVD correlation; ordinary hostnames return `not_applicable` |
 
-Active modules currently classified as target-contacting and therefore verification-gated:
+All fetches use fixed base URLs, `AbortSignal.timeout`, bounded response sizes, and normalized output metadata.
+
+## Active adapters disabled
+
+Active modules remain classified but unwired:
 
 - `quick`
 - `ssl`
 - `headers`
 - `tech`
+
+They return HTTP 501 unless explicit adapters are injected in a future slice. Do not wire them until auth, entitlement, ownership verification, audit logging, and rate/concurrency controls exist end-to-end.
 
 ## Safety constraints
 
@@ -66,7 +105,7 @@ Active adapters must only be wired after ownership verification or explicit admi
 Run:
 
 ```bash
-npm test -- src/server/scanner-v2/scanner-service.test.ts
+npm test -- src/server/scanner-v2
 npm run lint
 npm run typecheck
 npm run build
