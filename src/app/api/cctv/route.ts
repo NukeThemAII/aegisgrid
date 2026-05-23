@@ -292,7 +292,7 @@ const REGION_FETCHERS: Record<string, () => Promise<any[]>> = {
 };
 
 // Determine which regions to fetch based on viewport bounds
-function getRegionsForBounds(lat: number, lng: number, radius: number): string[] {
+function getRegionsForBounds(lat: number, lng: number, _radius: number): string[] {
   const regions: string[] = [];
   // UK
   if (lat > 49 && lat < 61 && lng > -8 && lng < 2) regions.push('uk');

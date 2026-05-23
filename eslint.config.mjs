@@ -10,7 +10,7 @@ const eslintConfig = defineConfig([
       // The inherited fork has broad adapter-boundary `any` usage. Keep lint
       // useful for the V2 foundation, then tighten types in focused slices.
       "@typescript-eslint/no-explicit-any": "off",
-      "@typescript-eslint/no-unused-vars": "warn",
+      "@typescript-eslint/no-unused-vars": ["warn", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_", "caughtErrorsIgnorePattern": "^_" }],
       "prefer-const": "warn",
       // Next/React 19 compiler-adjacent rules flag the inherited ref-backed
       // dashboard data store. Leave behavior stable for foundation; refactor

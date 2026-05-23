@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useCallback, useEffect, memo } from 'react';
+import { useState, useCallback, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Search, Radar, Globe, Shield, FileText, Radio,
+  Search, Radar, Globe, Shield, FileText,
   ChevronDown, ChevronUp, Loader2, AlertTriangle, Server,
-  Wifi, Lock, MapPin, Bug, Code, Layers, Network, Fingerprint,
+  Wifi, Lock, Bug, Code, Layers, Fingerprint,
   CheckCircle, XCircle, Clock, ExternalLink, Crosshair,
   Maximize2, Minimize2
 } from 'lucide-react';

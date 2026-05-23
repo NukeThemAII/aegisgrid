@@ -111,7 +111,7 @@ export async function GET() {
             });
           }
         }
-      } catch (e) {
+      } catch {
         console.warn(`Failed to fetch ${feed.source}`);
       }
     }

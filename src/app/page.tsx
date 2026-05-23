@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Layers, BarChart3, Newspaper, Search, Share2, Map as MapIcon, X, Globe, MapPinned, Radar, Satellite, Moon, ExternalLink, AlertTriangle, Building2, RadioTower, Activity, Shield, Database, Wifi } from 'lucide-react';
+import { Layers, BarChart3, Newspaper, Search, X, Globe, MapPinned, Radar, Satellite, Moon, ExternalLink, AlertTriangle, Activity, Database, Wifi } from 'lucide-react';
 import IntelFeed from '@/components/IntelFeed';
 import MarketsPanel from '@/components/MarketsPanel';
 import SearchBar from '@/components/SearchBar';
@@ -78,7 +78,7 @@ const DataThroughput = () => {
 
 export default function Dashboard() {
   const dataRef = useRef<any>({});
-  const [dataVersion, setDataVersion] = useState(0);
+  const [_dataVersion, setDataVersion] = useState(0);
   const data = dataRef.current;
 
   const [backendStatus, setBackendStatus] = useState<'connecting' | 'connected' | 'error'>('connecting');
@@ -94,14 +94,13 @@ export default function Dashboard() {
   const [showLayers, setShowLayers] = useState(true);
   const [showMarkets, setShowMarkets] = useState(true);
   const [showIntel, setShowIntel] = useState(true);
-  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [_isFullscreen, setIsFullscreen] = useState(false);
   const [mobilePanel, setMobilePanel] = useState<'layers'|'markets'|'intel'|'search'|'recon'|null>(null);
   const [mapProjection, setMapProjection] = useState<'globe'|'mercator'>('globe');
   const [mapStyle, setMapStyle] = useState<'dark'|'satellite'>('dark');
   const [sweepData, setSweepData] = useState<any>(null);
 
   const isMobile = useIsMobile();
-  const startTime = useRef(Date.now());
   const geocodeCache = useRef<Map<string, string>>(new Map());
   const geocodeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastGeocodedPos = useRef<{ lat: number; lng: number } | null>(null);
@@ -348,7 +347,7 @@ export default function Dashboard() {
       layerFetchedRef.current.add('gdelt');
     }
 
-  }, [activeLayers]);
+  }, [activeLayers, fetchEndpoint]);
 
   // ── LAYER-AWARE POLLING — only poll data for active layers ──
   useEffect(() => {
@@ -1014,7 +1013,9 @@ export default function Dashboard() {
                   </div>
                 )}
                 {regionDossier.head_of_state && (<div><div className="hud-label mb-0.5">HEAD OF STATE</div><div className="text-xs text-[var(--gold-primary)]">{regionDossier.head_of_state.name}</div><div className="text-[8px] text-[var(--text-muted)]">{regionDossier.head_of_state.position}</div></div>)}
-                {regionDossier.wikipedia && (<div><div className="hud-label mb-1">INTELLIGENCE BRIEF</div><div className="flex gap-3">{regionDossier.wikipedia.thumbnail && <img src={regionDossier.wikipedia.thumbnail} alt="" className="w-14 h-14 rounded object-cover flex-shrink-0" />}<p className="text-[8px] text-[var(--text-secondary)] leading-relaxed">{regionDossier.wikipedia.extract}</p></div></div>)}
+                {regionDossier.wikipedia && (<div><div className="hud-label mb-1">INTELLIGENCE BRIEF</div><div className="flex gap-3">{regionDossier.wikipedia.thumbnail &&
+                  // eslint-disable-next-line @next/next/no-img-element -- dynamic external Wikipedia thumbnail from unknown domains; Next Image requires explicit domain allowlist
+                  <img src={regionDossier.wikipedia.thumbnail} alt="" className="w-14 h-14 rounded object-cover flex-shrink-0" />}<p className="text-[8px] text-[var(--text-secondary)] leading-relaxed">{regionDossier.wikipedia.extract}</p></div></div>)}
               </div>
             )}
           </div>

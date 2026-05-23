@@ -3,9 +3,9 @@
 import { memo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Plane, Satellite, Activity, Globe, Radio, Eye,
-  Shield, Sun, AlertTriangle, Camera, Flame, Target,
-  CloudLightning, Radiation, Tv, Anchor, Ship, Newspaper,
+  Plane, Satellite, Activity, Radio, Eye,
+  Shield, Sun, AlertTriangle, Camera, Flame,
+  CloudLightning, Radiation, Tv, Ship, Newspaper,
   ChevronDown, ChevronUp, ToggleLeft, ToggleRight,
 } from 'lucide-react';
 

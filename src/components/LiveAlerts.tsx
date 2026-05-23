@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  ChevronDown, ChevronUp, MapPin, ExternalLink, AlertTriangle,
+  ChevronDown, ChevronUp, MapPin, AlertTriangle,
   Newspaper, Clock, Radio,
 } from 'lucide-react';
 

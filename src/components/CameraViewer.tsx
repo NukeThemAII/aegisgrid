@@ -184,6 +184,7 @@ export default function CameraViewer({ camera, onClose, onLocate }: CameraViewer
                 allowFullScreen
               />
             ) : imageUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element -- live camera feed from dynamic external CCTV sources; domains are unknown/arbitrary and cannot be allowlisted for Next Image
               <img
                 key={refreshKey}
                 src={imageUrl}

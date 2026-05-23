@@ -760,6 +760,7 @@ function AegisGridMap({ data, activeLayers, onEntityClick, onMouseCoords, onRigh
     });
 
     return () => { map.remove(); mapRef.current = null; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- one-time map initialization; deps (createDot, createIcon, callbacks) are stable useCallback([]) refs; adding them would destroy/recreate the map on every render
   }, []);
 
   // Day/Night
@@ -800,7 +801,7 @@ function AegisGridMap({ data, activeLayers, onEntityClick, onMouseCoords, onRigh
     setGeo('private-fl', activeLayers.private ? toFeatures(data.private_flights) : []);
     setGeo('jets', activeLayers.jets ? toFeatures(data.private_jets) : []);
     setGeo('military', activeLayers.military ? toFeatures(data.military_flights) : []);
-  }, [mapReady, data.commercial_flights, data.private_flights, data.private_jets, data.military_flights, activeLayers.flights, activeLayers.private, activeLayers.jets, activeLayers.military]);
+  }, [mapReady, data.commercial_flights, data.private_flights, data.private_jets, data.military_flights, activeLayers.flights, activeLayers.private, activeLayers.jets, activeLayers.military, setGeo]);
 
   // ── DECOUPLED LAYER RENDERERS (Performance Optimized) ──
 
