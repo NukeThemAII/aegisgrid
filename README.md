@@ -179,7 +179,7 @@ aegisgrid/
 │   │   ├── html.ts                   popup HTML escaping
 │   │   ├── ssrf-guard.ts            SSRF protection for proxied URLs
 │   │   └── bulgaria-sources.ts      regional source config
-│   └── middleware.ts             # request middleware
+│   └── proxy.ts                  # API request proxy / rate limiter
 ├── docs/
 │   └── sources.md                # source register + licensing notes
 ├── public/                       # logos, favicons, manifest, OG image

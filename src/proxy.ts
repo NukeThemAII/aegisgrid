@@ -8,16 +8,17 @@ const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
 const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
 const MAX_REQUESTS_PER_WINDOW = 100;
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   // Only apply to API routes
   if (!request.nextUrl.pathname.startsWith('/api')) {
     return NextResponse.next();
   }
 
-  // request.ip is populated securely by the hosting platform (Vercel).
-  // Fallback to the leftmost x-forwarded-for if running locally/custom node server.
+  // Use proxy-provided headers when deployed behind Vercel or another trusted
+  // reverse proxy. Local/custom deployments fall back to `unknown`.
   const forwarded = request.headers.get('x-forwarded-for');
-  const ip = (request as any).ip || (forwarded ? forwarded.split(',')[0].trim() : 'unknown');
+  const realIp = request.headers.get('x-real-ip')?.trim();
+  const ip = realIp || (forwarded ? forwarded.split(',')[0].trim() : 'unknown');
   const now = Date.now();
 
   let limitData = rateLimitMap.get(ip);
