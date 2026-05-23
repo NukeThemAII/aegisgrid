@@ -143,6 +143,8 @@ FEATURE_X402=false
 - `SCANNER_ALLOWED_TARGETS` accepts comma-separated exact hosts/IPs plus wildcard subdomains such as `*.example.com`.
 - Active scanning must run in a **separate private service** you own.
 - That service must also enforce ownership verification or an explicit allowlist before executing any scan.
+- Scanner V2 has started as a tested local-service policy core in [`src/server/scanner-v2/`](src/server/scanner-v2/) and is documented in [`docs/scanner-v2.md`](docs/scanner-v2.md).
+- The skeleton currently has no real active scanner adapters; passive modules return normalized placeholders until lawful source adapters are wired.
 - Do not expose a configured scanner proxy on a public deployment until auth/entitlement checks exist; until then, only explicitly allowlisted targets can reach the backend.
 
 ---
@@ -179,8 +181,11 @@ aegisgrid/
 │   │   ├── html.ts                   popup HTML escaping
 │   │   ├── ssrf-guard.ts            SSRF protection for proxied URLs
 │   │   └── bulgaria-sources.ts      regional source config
+│   ├── server/
+│   │   └── scanner-v2/              local scanner service policy skeleton
 │   └── proxy.ts                  # API request proxy / rate limiter
 ├── docs/
+│   ├── scanner-v2.md             # Scanner V2 local service notes
 │   └── sources.md                # source register + licensing notes
 ├── public/                       # logos, favicons, manifest, OG image
 ├── .env.example                  # all env vars with annotations
@@ -231,6 +236,7 @@ npm run build  # full Next.js production build
 
 ## 🗺️ Roadmap (next)
 
+- [ ] Scanner V2 adapters + private local HTTP runner (policy core is tested)
 - [ ] Auth layer (GitHub/Google OAuth)
 - [ ] Database persistence (PostgreSQL)
 - [ ] Redis job queue for background feed refresh
