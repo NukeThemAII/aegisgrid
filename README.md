@@ -253,7 +253,16 @@ npm run build  # full Next.js production build
 
 ## 🗺️ Roadmap (next)
 
-- [x] Scanner V2 proxy auth boundary + active ownership verification scaffold
+### Completed (foundation scaffolds)
+- [x] Rebrand from Osiris to AegisGrid (package, UI, metadata, console prefixes)
+- [x] Lint cleanup, Next.js type validation, middleware migration to Next proxy
+- [x] SSRF guards, rate limiting, path traversal protection on OSINT routes
+- [x] OSINT route safety test coverage (scanner scope, policy, audit)
+- [x] Scanner V2 passive runner + in-process passive adapters (rDNS, WHOIS, CT subdomains, geoloc, CVE)
+- [x] Scanner audit persistence + source health endpoint (`/api/scanner/health`)
+- [x] Scanner auth boundary + entitlement verification scaffold (token subject auth, DNS TXT ownership verification, admin allowlist CRUD, audit export)
+
+### Up next
 - [ ] Auth layer (GitHub/Google OAuth)
 - [ ] Database persistence (PostgreSQL)
 - [ ] Redis job queue for background feed refresh
@@ -265,7 +274,7 @@ npm run build  # full Next.js production build
 - [ ] Type tightening + unit test coverage
 - [ ] Comms/collaboration features
 
-> Checked items are foundation scaffolds, not full commercial production systems.
+> Completed items are foundation scaffolds, not full commercial production systems.
 > Remaining feature flags default to `false`; don't claim premium/auth/billing is live.
 
 ---
