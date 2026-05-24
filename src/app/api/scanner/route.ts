@@ -1,9 +1,11 @@
 import { NextResponse } from 'next/server';
 import { validateHost, isRateLimited, getClientIp } from '@/lib/ssrf-guard';
 import {
-  parseAllowlist,
-  isAllowedTarget as checkAllowedTarget,
-} from '@/lib/scanner-scope';
+  isAuthenticatedScannerSubject,
+  parseScannerSubject,
+} from '@/lib/scanner-auth';
+import { isAdminAllowlistedTarget } from '@/lib/scanner-allowlist';
+import { isSubjectVerifiedTarget } from '@/lib/scanner-targets';
 import {
   canBypassHostValidation,
   classifyScanRequest,
@@ -23,9 +25,10 @@ import {
  * Dual-path routing:
  *   1. Passive scan types (rdns, whois, subdomains, geoloc, vuln) run
  *      in-process using Scanner V2 adapters — no external backend needed.
- *   2. Active scan types (quick, ssl, headers, tech) require an external
- *      scanner backend (SCANNER_URL + SCANNER_KEY) AND target allowlisting.
- *      They fail closed otherwise.
+ *   2. Active scan types (quick, ssl, headers, tech) require an authenticated
+ *      scanner subject, target entitlement (DNS TXT verified subject target
+ *      or admin allowlist), and an external scanner backend
+ *      (SCANNER_URL + SCANNER_KEY). They fail closed otherwise.
  *
  * Rate-limited, target-validated, scope-restricted, audit-logged.
  */
@@ -34,17 +37,15 @@ import {
 
 const SCANNER_URL = process.env.SCANNER_URL || '';
 const SCANNER_KEY = process.env.SCANNER_KEY || '';
-const SCANNER_ALLOWED_TARGETS = parseAllowlist(
-  process.env.SCANNER_ALLOWED_TARGETS || '',
-);
 
 const scannerBackendConfigured = Boolean(SCANNER_URL && SCANNER_KEY);
 
-function isExplicitlyAllowlistedTarget(target: string): boolean {
-  // Public /api/scanner active scans require explicit allowlist membership.
-  // Do not honor SCANNER_REQUIRE_VERIFICATION=false here; anonymous public
-  // users may use passive lookups only.
-  return checkAllowedTarget(target, SCANNER_ALLOWED_TARGETS, true);
+type TargetEntitlement = 'none' | 'admin_allowlist' | 'subject_verified';
+
+function targetEntitlement(adminAllowlisted: boolean, subjectVerified: boolean): TargetEntitlement {
+  if (adminAllowlisted) return 'admin_allowlist';
+  if (subjectVerified) return 'subject_verified';
+  return 'none';
 }
 
 // ── Passive adapters singleton ───────────────────────────────────────────
@@ -70,6 +71,12 @@ export async function GET(req: Request) {
 
   // 1. Rate limit by client IP
   const clientIp = getClientIp(req);
+  const subject = parseScannerSubject(req, clientIp);
+  const subjectAudit = {
+    subject_role: subject.role,
+    ...(subject.subjectId ? { subject_id: subject.subjectId } : {}),
+  };
+
   if (isRateLimited(clientIp, 5, 60_000)) {
     await recordScanAudit({
       scan_type: scanType,
@@ -81,6 +88,7 @@ export async function GET(req: Request) {
       result_status: 429,
       duration_ms: Date.now() - startTime,
       client_ip: clientIp,
+      ...subjectAudit,
     });
 
     return NextResponse.json({
@@ -102,6 +110,7 @@ export async function GET(req: Request) {
       result_status: 400,
       duration_ms: Date.now() - startTime,
       client_ip: clientIp,
+      ...subjectAudit,
     });
 
     return NextResponse.json({
@@ -111,10 +120,20 @@ export async function GET(req: Request) {
   }
 
   // 3. Classify the scan request (passive/active/unknown)
+  const adminAllowlisted = await isAdminAllowlistedTarget(target);
+  const subjectVerified = subject.subjectId
+    ? await isSubjectVerifiedTarget(subject.subjectId, target)
+    : false;
+  const activeTargetEntitlement = targetEntitlement(adminAllowlisted, subjectVerified);
+  const policyAudit = {
+    ...subjectAudit,
+    target_entitlement: activeTargetEntitlement,
+  };
   const policy = classifyScanRequest(
     scanType,
-    isExplicitlyAllowlistedTarget(target),
+    activeTargetEntitlement !== 'none',
     scannerBackendConfigured,
+    isAuthenticatedScannerSubject(subject),
   );
 
   // 4. If denied by policy, return early with normalized error
@@ -129,6 +148,7 @@ export async function GET(req: Request) {
       result_status: policy.denial_status ?? 403,
       duration_ms: Date.now() - startTime,
       client_ip: clientIp,
+      ...policyAudit,
     });
 
     return NextResponse.json({
@@ -152,6 +172,7 @@ export async function GET(req: Request) {
         result_status: 403,
         duration_ms: Date.now() - startTime,
         client_ip: clientIp,
+        ...policyAudit,
       });
 
       return NextResponse.json({
@@ -179,6 +200,7 @@ export async function GET(req: Request) {
         result_status: 200,
         duration_ms: Date.now() - startTime,
         client_ip: clientIp,
+        ...policyAudit,
       });
 
       return NextResponse.json({
@@ -204,6 +226,7 @@ export async function GET(req: Request) {
         result_status: 200,
         duration_ms: Date.now() - startTime,
         client_ip: clientIp,
+        ...policyAudit,
       });
 
       return NextResponse.json({
@@ -226,6 +249,7 @@ export async function GET(req: Request) {
         result_status: 502,
         duration_ms: Date.now() - startTime,
         client_ip: clientIp,
+        ...policyAudit,
       });
 
       return NextResponse.json({
@@ -240,7 +264,7 @@ export async function GET(req: Request) {
   }
 
   // ── PATH B: Active scan — proxy to external scanner backend ───────────
-  // Policy already verified: target is allowlisted AND backend is configured.
+  // Policy already verified: authenticated subject, target entitlement, and backend configured.
 
   const timeout = ACTIVE_TIMEOUTS[scanType as ScanType] ?? 15_000;
 
@@ -262,6 +286,7 @@ export async function GET(req: Request) {
       result_status: res.status,
       duration_ms: Date.now() - startTime,
       client_ip: clientIp,
+      ...policyAudit,
     });
 
     return NextResponse.json(data, { status: res.status });
@@ -275,6 +300,7 @@ export async function GET(req: Request) {
       result_status: 502,
       duration_ms: Date.now() - startTime,
       client_ip: clientIp,
+      ...policyAudit,
     });
 
     return NextResponse.json({

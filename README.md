@@ -109,9 +109,15 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 
 # ── Scanner proxy (guarded) ──────────────────────
 SCANNER_URL=http://127.0.0.1:4007  # URL of your private scanner backend
-SCANNER_KEY=             # shared secret
-SCANNER_ALLOWED_TARGETS= # comma-separated exact hosts/IPs or *.example.com
-SCANNER_REQUIRE_VERIFICATION=true  # used by private runner; public route still requires explicit allowlisting
+SCANNER_KEY=             # backend shared secret
+SCANNER_USER_TOKENS=     # subject-id:token pairs for active scanner users
+SCANNER_ADMIN_TOKEN=     # bearer token for admin allowlist/audit endpoints
+SCANNER_ALLOWED_TARGETS= # read-only admin allowlist baseline
+SCANNER_VERIFIED_TARGETS= # read-only subject target baseline: subject-id:example.com
+SCANNER_REQUIRE_VERIFICATION=true  # used by private runner; public route still requires auth + entitlement
+SCANNER_VERIFICATION_SECRET=change-me
+SCANNER_TARGETS_DIR=.data/scanner-targets
+SCANNER_ADMIN_ALLOWLIST_PATH=.data/scanner-admin-allowlist.json
 SCANNER_V2_HOST=127.0.0.1
 SCANNER_V2_PORT=4007
 SCANNER_AUDIT_PERSISTENCE=file
@@ -143,9 +149,11 @@ FEATURE_X402=false
 `/api/scanner` is a dual-path scanner route: passive modules run in-process, while active modules remain a guarded proxy to a private scanner backend.
 
 - Passive lookups (`rdns`, `whois`, `subdomains`, `geoloc`, `vuln`) work without `SCANNER_URL` or `SCANNER_KEY`.
-- Active scans require an explicit `SCANNER_ALLOWED_TARGETS` match plus both `SCANNER_URL` and `SCANNER_KEY`.
+- Active scans require an authenticated scanner subject, target entitlement, and both `SCANNER_URL` and `SCANNER_KEY`.
+- Target entitlement can come from DNS TXT ownership verification (`/api/scanner/verification`) or admin allowlist entries (`SCANNER_ALLOWED_TARGETS` / `/api/scanner/admin/allowlist`).
 - The public route does not use `SCANNER_REQUIRE_VERIFICATION=false` to open active scans.
-- `SCANNER_ALLOWED_TARGETS` accepts comma-separated exact hosts/IPs plus wildcard subdomains such as `*.example.com`.
+- `SCANNER_ALLOWED_TARGETS` accepts comma-separated exact hosts/IPs plus wildcard subdomains such as `*.example.com` as a read-only baseline.
+- Admin audit export is available at `/api/scanner/admin/audit` and is gated to admin/local operators.
 - Active scanning must run in a **separate private service** you own.
 - That service must also enforce ownership verification or an explicit allowlist before executing any scan.
 - Scanner V2 now has a private localhost HTTP runner and passive adapters under [`src/server/scanner-v2/`](src/server/scanner-v2/), documented in [`docs/scanner-v2.md`](docs/scanner-v2.md).
@@ -153,8 +161,8 @@ FEATURE_X402=false
 - Passive adapters are wired for RDNS, RDAP/WHOIS, CT subdomains, geolocation, and CVE/CPE evidence correlation.
 - Scanner audit events are emitted as structured logs and can persist to `.data/scanner-audit.jsonl`.
 - Source health is available at `/api/scanner/health`.
-- Active adapters remain intentionally unwired until auth, entitlement, ownership verification, and audit logging are complete end-to-end.
-- Do not expose a configured scanner proxy on a public deployment until full auth/entitlement checks exist; until then, only explicitly allowlisted targets can reach the backend.
+- Local Scanner V2 active adapters remain intentionally unwired; a configured external backend must enforce its own ownership and rate/concurrency controls too.
+- Active scanner proxy now has token subject auth, DNS TXT target verification scaffold, admin allowlist management, and audit export; production OAuth/database integration is still planned.
 
 ---
 
@@ -245,7 +253,7 @@ npm run build  # full Next.js production build
 
 ## 🗺️ Roadmap (next)
 
-- [ ] Scanner V2 proxy integration + active ownership verification gate
+- [x] Scanner V2 proxy auth boundary + active ownership verification scaffold
 - [ ] Auth layer (GitHub/Google OAuth)
 - [ ] Database persistence (PostgreSQL)
 - [ ] Redis job queue for background feed refresh
@@ -257,8 +265,8 @@ npm run build  # full Next.js production build
 - [ ] Type tightening + unit test coverage
 - [ ] Comms/collaboration features
 
-> None of the above are implemented yet. Feature flags exist but default
-> to `false`. Don't claim otherwise.
+> Checked items are foundation scaffolds, not full commercial production systems.
+> Remaining feature flags default to `false`; don't claim premium/auth/billing is live.
 
 ---
 

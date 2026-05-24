@@ -33,6 +33,14 @@ describe('scanner policy — passive scan classification', () => {
 });
 
 describe('scanner policy — active scan classification', () => {
+  it.each(ACTIVE_SCAN_TYPES)('denies active scan type "%s" when subject is anonymous', (scanType) => {
+    const result = classifyScanRequest(scanType, true, true, false);
+    expect(result.allowed).toBe(false);
+    expect(result.mode).toBe('active');
+    expect(result.code).toBe('ACTIVE_SCAN_REQUIRES_AUTH');
+    expect(result.denial_status).toBe(401);
+  });
+
   it.each(ACTIVE_SCAN_TYPES)('denies active scan type "%s" when target is NOT allowlisted', (scanType) => {
     const result = classifyScanRequest(scanType, false, true);
     expect(result.allowed).toBe(false);

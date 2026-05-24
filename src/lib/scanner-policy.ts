@@ -68,13 +68,15 @@ export function canBypassHostValidation(scanType: string, target: string): boole
  * the route handler. It only decides passive/active routing.
  *
  * @param scanType - The requested scan type string.
- * @param isTargetAllowlisted - Whether the target passes the allowlist check.
+ * @param hasTargetEntitlement - Whether the target is verified for the subject or admin-allowlisted.
  * @param scannerBackendConfigured - Whether SCANNER_URL + SCANNER_KEY are set.
+ * @param isAuthenticatedSubject - Whether the caller is an authenticated scanner subject.
  */
 export function classifyScanRequest(
   scanType: string,
-  isTargetAllowlisted: boolean,
+  hasTargetEntitlement: boolean,
   scannerBackendConfigured: boolean,
+  isAuthenticatedSubject: boolean = true,
 ): ScanPolicyResult {
   // 1. Unknown scan type → fail closed
   if (!KNOWN_SCAN_TYPES.has(scanType)) {
@@ -98,8 +100,20 @@ export function classifyScanRequest(
     };
   }
 
-  // 3. Active scan type → requires both allowlisted target AND scanner backend
-  if (!isTargetAllowlisted) {
+  // 3. Active scan type → requires authenticated subject, target entitlement, and scanner backend
+  if (!isAuthenticatedSubject) {
+    return {
+      allowed: false,
+      mode: 'active',
+      code: 'ACTIVE_SCAN_REQUIRES_AUTH',
+      denial_reason:
+        `"${scanType}" is an active scan that connects to the target. ` +
+        'Active scans require an authenticated scanner subject. Anonymous users may use passive lookups only.',
+      denial_status: 401,
+    };
+  }
+
+  if (!hasTargetEntitlement) {
     return {
       allowed: false,
       mode: 'active',

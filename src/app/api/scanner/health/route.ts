@@ -60,7 +60,8 @@ export async function GET() {
       status: 'disabled_by_default',
       scan_types: ACTIVE_SCAN_TYPES,
       requirements: [
-        'explicit SCANNER_ALLOWED_TARGETS match',
+        'authenticated scanner subject (SCANNER_USER_TOKENS, SCANNER_ADMIN_TOKEN, or local admin)',
+        'target entitlement via DNS TXT verified subject target or admin allowlist',
         'scanner URL configured',
         'scanner API key configured',
       ],

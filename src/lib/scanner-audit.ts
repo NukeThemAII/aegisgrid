@@ -28,6 +28,8 @@ export type ScannerEntitlement =
   | 'target_allowlisted_active'
   | 'denied'
   | 'unknown';
+export type ScannerSubjectAuditRole = 'anonymous' | 'authenticated' | 'admin';
+export type ScannerTargetEntitlement = 'none' | 'admin_allowlist' | 'subject_verified';
 
 export interface ScanAuditEntry {
   /** Scan type requested (e.g. 'rdns', 'whois', 'quick'). */
@@ -50,6 +52,12 @@ export interface ScanAuditEntry {
   duration_ms: number;
   /** Client IP (may be proxy-forwarded). */
   client_ip: string;
+  /** Authenticated scanner subject role; never contains tokens. */
+  subject_role?: ScannerSubjectAuditRole;
+  /** Safe subject id only; never a token. */
+  subject_id?: string;
+  /** Why the target was entitled for an active scan, if applicable. */
+  target_entitlement?: ScannerTargetEntitlement;
 }
 
 export interface ScannerAuditRecord extends ScanAuditEntry {

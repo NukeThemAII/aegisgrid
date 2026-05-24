@@ -3,7 +3,7 @@
 AegisGrid's public Next.js route at `/api/scanner` now has dual-path routing:
 
 1. **Passive scans** (rdns, whois, subdomains, geoloc, vuln) run Scanner V2 adapters **in-process** — no external backend required.
-2. **Active scans** (quick, ssl, headers, tech) still proxy to an external scanner backend via `SCANNER_URL` + `SCANNER_KEY`, and require explicit target allowlisting in the public route. They fail closed otherwise.
+2. **Active scans** (quick, ssl, headers, tech) proxy to an external scanner backend via `SCANNER_URL` + `SCANNER_KEY` only after the caller is an authenticated scanner subject and the target is entitled by DNS TXT ownership verification or admin allowlisting. They fail closed otherwise.
 
 Current status:
 
@@ -35,8 +35,14 @@ Configure `.env.local` or the process environment:
 ```env
 SCANNER_KEY=change-me
 SCANNER_URL=http://127.0.0.1:4007
+SCANNER_USER_TOKENS=analyst:replace-with-strong-random-token
+SCANNER_ADMIN_TOKEN=replace-with-strong-random-admin-token
 SCANNER_ALLOWED_TARGETS=example.com,*.example.com
+SCANNER_VERIFIED_TARGETS=
 SCANNER_REQUIRE_VERIFICATION=true
+SCANNER_VERIFICATION_SECRET=replace-with-strong-random-secret
+SCANNER_TARGETS_DIR=.data/scanner-targets
+SCANNER_ADMIN_ALLOWLIST_PATH=.data/scanner-admin-allowlist.json
 SCANNER_V2_HOST=127.0.0.1
 SCANNER_V2_PORT=4007
 SCANNER_V2_ALLOW_NON_LOOPBACK=false
@@ -74,11 +80,70 @@ Execution order is fail-closed:
 2. Validate scan type against the authoritative `SCAN_DEFINITIONS` registry.
 3. Classify scan as passive or active.
 4. **Passive path**: validate host/IP targets with the SSRF guard, then run the in-process adapter. Only the `vuln` module may accept CVE/CPE evidence strings without host validation.
-5. **Active path**: require explicit `SCANNER_ALLOWED_TARGETS` match AND `SCANNER_URL`/`SCANNER_KEY` configuration. If either is missing, fail closed with a clear JSON error. The public route does not use `SCANNER_REQUIRE_VERIFICATION=false` to open active scans.
+5. **Active path**: require an authenticated scanner subject plus target entitlement. Target entitlement comes from either:
+   - DNS TXT ownership verification for that subject (`/api/scanner/verification`), stored under `SCANNER_TARGETS_DIR`, or
+   - admin allowlist entries from read-only `SCANNER_ALLOWED_TARGETS` and file-backed `/api/scanner/admin/allowlist`.
+   Then require `SCANNER_URL`/`SCANNER_KEY`. Missing auth returns `ACTIVE_SCAN_REQUIRES_AUTH`; missing target entitlement returns `ACTIVE_SCAN_REQUIRES_VERIFICATION`; missing backend returns `SCANNER_BACKEND_NOT_CONFIGURED`. The public route does not use `SCANNER_REQUIRE_VERIFICATION=false` to open active scans.
 6. Return normalized empty results for passive modules without adapters.
 7. Return HTTP 501 for active modules without adapters.
 8. Convert adapter failures into normalized HTTP 502 errors.
 9. All decisions are audit-logged.
+
+## Authentication and target entitlement
+
+The scanner foundation deliberately avoids full app auth/database dependencies for now. It provides a narrow scanner subject model for active scan gating:
+
+| Env var | Purpose |
+| --- | --- |
+| `SCANNER_USER_TOKENS` | Comma-separated `subject-id:token` pairs for authenticated scanner users. |
+| `SCANNER_ADMIN_TOKEN` | Bearer token for remote scanner admin endpoints. |
+| `SCANNER_VERIFICATION_SECRET` | HMAC secret used to derive deterministic DNS TXT challenge values. Use a strong random value. |
+| `SCANNER_TARGETS_DIR` | File-backed verified-target store, default `.data/scanner-targets`. |
+| `SCANNER_VERIFIED_TARGETS` | Read-only bootstrap entitlements, format `subject-id:example.com,subject-2:test.org`. |
+| `SCANNER_ADMIN_ALLOWLIST_PATH` | File-backed admin allowlist store, default `.data/scanner-admin-allowlist.json`. |
+| `SCANNER_ALLOWED_TARGETS` | Read-only admin allowlist baseline from environment. |
+
+Remote clients authenticate with `Authorization: Bearer <token>`. Responses and audit records never include token values.
+
+### DNS TXT ownership scaffold
+
+Authenticated scanner users can request and verify ownership challenges:
+
+```txt
+GET  /api/scanner/verification?target=example.com
+POST /api/scanner/verification  { "target": "example.com" }
+```
+
+The `GET` response returns a deterministic TXT challenge like:
+
+```txt
+_aegisgrid-verify.example.com TXT aegisgrid-verify=<sha256-hmac>
+```
+
+`POST` performs a passive DNS TXT lookup for the challenge. On success, it saves the normalized target under the authenticated subject in `SCANNER_TARGETS_DIR`. It does not perform network probing against the target service.
+
+### Admin allowlist management
+
+Admin/local operators can manage file-backed allowlist entries:
+
+```txt
+GET    /api/scanner/admin/allowlist
+POST   /api/scanner/admin/allowlist  { "target": "example.com", "note": "approved owner request" }
+DELETE /api/scanner/admin/allowlist?target=example.com
+```
+
+The endpoint is gated by `SCANNER_ADMIN_TOKEN` or local self-hosted requests. `SCANNER_ALLOWED_TARGETS` remains a read-only baseline; DELETE only removes file-backed entries.
+
+### Audit export
+
+Admin/local operators can query persisted audit JSONL:
+
+```txt
+GET /api/scanner/admin/audit?limit=100
+GET /api/scanner/admin/audit?format=jsonl&limit=1000
+```
+
+The export strips any accidentally persisted secret/token/auth-looking fields and never returns the raw log path.
 
 ## Audit logging
 
@@ -95,6 +160,8 @@ Log fields:
 - `result_status` — HTTP status returned
 - `duration_ms` — wall-clock duration
 - `client_ip` — forwarded client IP
+- `subject_role` / `subject_id` — scanner subject metadata, never token values
+- `target_entitlement` — `none`, `subject_verified`, or `admin_allowlist`
 - `entitlement` — `public_passive`, `target_allowlisted_active`, `denied`, or `unknown`
 
 **Security**: SCANNER_KEY and auth headers are never logged. The `ScanAuditEntry` type does not accept secret fields.
@@ -149,7 +216,7 @@ Active modules remain classified but unwired:
 - `headers`
 - `tech`
 
-They return a clear JSON error with code `ACTIVE_SCAN_REQUIRES_VERIFICATION` (if target not allowlisted) or `SCANNER_BACKEND_NOT_CONFIGURED` (if backend not set up). Do not wire them until auth, entitlement, ownership verification, audit logging, and rate/concurrency controls exist end-to-end.
+They return clear JSON policy errors (`ACTIVE_SCAN_REQUIRES_AUTH`, `ACTIVE_SCAN_REQUIRES_VERIFICATION`, `SCANNER_BACKEND_NOT_CONFIGURED`) before a backend exists. When an external backend is configured, the public proxy still requires authenticated subject + target entitlement before forwarding.
 
 ## Safety constraints
 
