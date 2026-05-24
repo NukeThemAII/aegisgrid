@@ -14,6 +14,7 @@ Current status:
 - Audit logging: `src/lib/scanner-audit.ts`
 - Tests: `src/server/scanner-v2/*.test.ts`, `src/lib/scanner-policy.test.ts`
 - Public Next.js route: `src/app/api/scanner/route.ts`
+- Source health endpoint: `src/app/api/scanner/health/route.ts`
 - Active scanner adapters are intentionally not implemented or wired.
 
 ## Run locally
@@ -39,6 +40,8 @@ SCANNER_REQUIRE_VERIFICATION=true
 SCANNER_V2_HOST=127.0.0.1
 SCANNER_V2_PORT=4007
 SCANNER_V2_ALLOW_NON_LOOPBACK=false
+SCANNER_AUDIT_PERSISTENCE=file
+SCANNER_AUDIT_LOG_PATH=.data/scanner-audit.jsonl
 ```
 
 Start the private runner:
@@ -92,14 +95,36 @@ Log fields:
 - `result_status` — HTTP status returned
 - `duration_ms` — wall-clock duration
 - `client_ip` — forwarded client IP
+- `entitlement` — `public_passive`, `target_allowlisted_active`, `denied`, or `unknown`
 
 **Security**: SCANNER_KEY and auth headers are never logged. The `ScanAuditEntry` type does not accept secret fields.
+
+Lightweight persistence is configured with:
+
+| Env var | Default | Behavior |
+| --- | --- | --- |
+| `SCANNER_AUDIT_PERSISTENCE` | `file` | `file` appends JSONL and logs to console; `console` logs only; `off` disables audit emission. |
+| `SCANNER_AUDIT_LOG_PATH` | `.data/scanner-audit.jsonl` | Local JSONL path for VPS/self-hosted deployments. Parent directories are created automatically. |
+
+Persistence is best-effort: a file write failure emits a warning but does not make scanner responses fail.
 
 Log prefix: `[AEGIS-AUDIT]` for easy filtering:
 
 ```bash
 grep '\[AEGIS-AUDIT\]' /var/log/aegisgrid.log | jq .
 ```
+
+## Source health endpoint
+
+The public health endpoint is:
+
+```txt
+GET /api/scanner/health
+```
+
+It returns a no-store JSON payload with registered passive source adapters, source names and fixed source URLs where applicable, active scan requirements, and audit persistence mode. It does not expose API keys or raw secrets.
+
+The health endpoint intentionally does not live-probe upstream sources by default; it reports local adapter registration and source configuration so health checks stay fast and avoid unnecessary third-party traffic.
 
 ## Passive adapters implemented
 

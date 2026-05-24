@@ -6,6 +6,7 @@
 
 # Testing
 /coverage
+/.data
 
 # Next.js
 /.next/

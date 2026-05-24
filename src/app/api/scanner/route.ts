@@ -12,7 +12,7 @@ import {
 } from '@/lib/scanner-policy';
 import { createPassiveAdapters } from '@/server/scanner-v2/passive-adapters';
 import {
-  logScanAudit,
+  recordScanAudit,
   classifyTarget,
   sanitizeTargetForLog,
 } from '@/lib/scanner-audit';
@@ -71,7 +71,7 @@ export async function GET(req: Request) {
   // 1. Rate limit by client IP
   const clientIp = getClientIp(req);
   if (isRateLimited(clientIp, 5, 60_000)) {
-    logScanAudit({
+    await recordScanAudit({
       scan_type: scanType,
       target_classification: classifyTarget(target),
       sanitized_target: sanitizeTargetForLog(target),
@@ -92,7 +92,7 @@ export async function GET(req: Request) {
 
   // 2. Validate params
   if (!target) {
-    logScanAudit({
+    await recordScanAudit({
       scan_type: scanType,
       target_classification: 'unknown',
       sanitized_target: '',
@@ -119,7 +119,7 @@ export async function GET(req: Request) {
 
   // 4. If denied by policy, return early with normalized error
   if (!policy.allowed) {
-    logScanAudit({
+    await recordScanAudit({
       scan_type: scanType,
       target_classification: classifyTarget(target),
       sanitized_target: sanitizeTargetForLog(target),
@@ -142,7 +142,7 @@ export async function GET(req: Request) {
   if (!canBypassHostValidation(scanType, target)) {
     const guard = await validateHost(target);
     if (!guard.ok) {
-      logScanAudit({
+      await recordScanAudit({
         scan_type: scanType,
         target_classification: classifyTarget(target),
         sanitized_target: sanitizeTargetForLog(target),
@@ -170,7 +170,7 @@ export async function GET(req: Request) {
 
     if (!adapter) {
       // Passive module exists in definitions but has no adapter wired yet
-      logScanAudit({
+      await recordScanAudit({
         scan_type: scanType,
         target_classification: classifyTarget(target),
         sanitized_target: sanitizeTargetForLog(target),
@@ -195,7 +195,7 @@ export async function GET(req: Request) {
     try {
       const data = await adapter(target);
 
-      logScanAudit({
+      await recordScanAudit({
         scan_type: scanType,
         target_classification: classifyTarget(target),
         sanitized_target: sanitizeTargetForLog(target),
@@ -217,7 +217,7 @@ export async function GET(req: Request) {
         data,
       });
     } catch {
-      logScanAudit({
+      await recordScanAudit({
         scan_type: scanType,
         target_classification: classifyTarget(target),
         sanitized_target: sanitizeTargetForLog(target),
@@ -253,7 +253,7 @@ export async function GET(req: Request) {
     });
     const data = await res.json();
 
-    logScanAudit({
+    await recordScanAudit({
       scan_type: scanType,
       target_classification: classifyTarget(target),
       sanitized_target: sanitizeTargetForLog(target),
@@ -266,7 +266,7 @@ export async function GET(req: Request) {
 
     return NextResponse.json(data, { status: res.status });
   } catch {
-    logScanAudit({
+    await recordScanAudit({
       scan_type: scanType,
       target_classification: classifyTarget(target),
       sanitized_target: sanitizeTargetForLog(target),

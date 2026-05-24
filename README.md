@@ -111,9 +111,11 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 SCANNER_URL=http://127.0.0.1:4007  # URL of your private scanner backend
 SCANNER_KEY=             # shared secret
 SCANNER_ALLOWED_TARGETS= # comma-separated exact hosts/IPs or *.example.com
-SCANNER_REQUIRE_VERIFICATION=true  # keep true for public deployments
+SCANNER_REQUIRE_VERIFICATION=true  # used by private runner; public route still requires explicit allowlisting
 SCANNER_V2_HOST=127.0.0.1
 SCANNER_V2_PORT=4007
+SCANNER_AUDIT_PERSISTENCE=file
+SCANNER_AUDIT_LOG_PATH=.data/scanner-audit.jsonl
 
 # ── Optional enrichment API keys ─────────────────
 NASA_FIRMS_MAP_KEY=      AISSTREAM_API_KEY=
@@ -138,18 +140,21 @@ FEATURE_X402=false
 
 ## 🔭 Scanner backend constraints
 
-`/api/scanner` is **only a guarded proxy**. It does not scan anything itself.
+`/api/scanner` is a dual-path scanner route: passive modules run in-process, while active modules remain a guarded proxy to a private scanner backend.
 
-- Requires both `SCANNER_URL` and `SCANNER_KEY` — returns HTTP 503 otherwise.
-- With `SCANNER_REQUIRE_VERIFICATION=true`, targets must match `SCANNER_ALLOWED_TARGETS` before the proxy calls the scanner backend.
+- Passive lookups (`rdns`, `whois`, `subdomains`, `geoloc`, `vuln`) work without `SCANNER_URL` or `SCANNER_KEY`.
+- Active scans require an explicit `SCANNER_ALLOWED_TARGETS` match plus both `SCANNER_URL` and `SCANNER_KEY`.
+- The public route does not use `SCANNER_REQUIRE_VERIFICATION=false` to open active scans.
 - `SCANNER_ALLOWED_TARGETS` accepts comma-separated exact hosts/IPs plus wildcard subdomains such as `*.example.com`.
 - Active scanning must run in a **separate private service** you own.
 - That service must also enforce ownership verification or an explicit allowlist before executing any scan.
 - Scanner V2 now has a private localhost HTTP runner and passive adapters under [`src/server/scanner-v2/`](src/server/scanner-v2/), documented in [`docs/scanner-v2.md`](docs/scanner-v2.md).
 - Run it with `npm run scanner:v2` after setting `SCANNER_KEY`; default bind is `127.0.0.1:4007`.
 - Passive adapters are wired for RDNS, RDAP/WHOIS, CT subdomains, geolocation, and CVE/CPE evidence correlation.
-- Active adapters remain intentionally unwired and return 501 until auth/entitlement/ownership verification and audit logging exist end-to-end.
-- Do not expose a configured scanner proxy on a public deployment until auth/entitlement checks exist; until then, only explicitly allowlisted targets can reach the backend.
+- Scanner audit events are emitted as structured logs and can persist to `.data/scanner-audit.jsonl`.
+- Source health is available at `/api/scanner/health`.
+- Active adapters remain intentionally unwired until auth, entitlement, ownership verification, and audit logging are complete end-to-end.
+- Do not expose a configured scanner proxy on a public deployment until full auth/entitlement checks exist; until then, only explicitly allowlisted targets can reach the backend.
 
 ---
 
@@ -162,14 +167,14 @@ aegisgrid/
 │   │   ├── page.tsx              # main dashboard SPA
 │   │   ├── layout.tsx            # root layout, meta, fonts
 │   │   ├── globals.css           # Tailwind + custom styles
-│   │   └── api/                  # 24 API route directories
+│   │   └── api/                  # API route directories
 │   │       ├── earthquakes/          USGS feeds
 │   │       ├── fires/                NASA FIRMS + EONET
 │   │       ├── flights/              ADS-B / OpenSky
 │   │       ├── satellites/           TLE / CelesTrak
 │   │       ├── cyber-threats/        threat intel
 │   │       ├── osint/                passive DNS/RDAP/CT/CVE
-│   │       ├── scanner/              guarded proxy (503 default)
+│   │       ├── scanner/              passive scanner + guarded active proxy
 │   │       ├── balloons/             placeholder (empty)
 │   │       ├── radiation/            placeholder (empty)
 │   │       └── ...                   weather, markets, news, etc.

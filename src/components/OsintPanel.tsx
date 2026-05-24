@@ -2,6 +2,7 @@
 
 import { useState, useCallback, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { getScannerV2Meta, getScannerV2Payload, getStringArrayField } from '@/lib/scanner-result-format';
 import {
   Search, Radar, Globe, Shield, FileText,
   ChevronDown, ChevronUp, Loader2, AlertTriangle, Server,
@@ -152,6 +153,21 @@ function OsintPanelInner({ isMobile, onSweepVisualize }: OsintPanelProps) {
     </div>
   );
 
+  const ScannerMetaBlock = ({ meta }: { meta: ReturnType<typeof getScannerV2Meta> }) => {
+    if (!meta) return null;
+    return (
+      <div className="mb-2 p-2 rounded-lg border border-[var(--border-secondary)]/30 bg-[var(--bg-primary)]/40">
+        <div className="flex items-center justify-between gap-2 mb-1">
+          <span className="text-[9px] font-mono font-bold tracking-widest text-[var(--cyan-primary)]">SCANNER V2</span>
+          <StatusBadge ok={meta.ok !== false} label={(meta.status || 'ok').toUpperCase()} />
+        </div>
+        <ResultRow label="Module" value={meta.label || meta.scan_type} />
+        <ResultRow label="Mode" value={meta.mode} color={meta.mode === 'passive' ? '#76FF03' : '#FF9500'} />
+        <ResultRow label="Fetched" value={meta.fetched_at} />
+      </div>
+    );
+  };
+
   const PortRow = ({ port, state, service, version }: { port: number; state: string; service?: string; version?: string }) => (
     <div className="flex items-center gap-2 py-1 px-2 rounded hover:bg-[var(--hover-accent)] transition-colors">
       <span className="text-[11px] font-mono font-bold text-[var(--cyan-primary)] w-[60px]">{port}</span>
@@ -163,7 +179,8 @@ function OsintPanelInner({ isMobile, onSweepVisualize }: OsintPanelProps) {
 
   const renderStructuredResults = () => {
     if (!results) return null;
-    const r = results;
+    const scannerMeta = getScannerV2Meta(results);
+    const r = getScannerV2Payload(results) as any;
 
     // ── PORT SCAN ──
     if (activeTab === 'scanner') {
@@ -171,6 +188,7 @@ function OsintPanelInner({ isMobile, onSweepVisualize }: OsintPanelProps) {
       const host = r.host || r.target || query;
       return (
         <div>
+          <ScannerMetaBlock meta={scannerMeta} />
           <SectionHeader title="HOST INFO" icon={Server} color="#00E5FF" />
           <ResultRow label="Target" value={host} color="#00E5FF" />
           <ResultRow label="Scan Type" value={r.scan_type || scanType} />
@@ -192,16 +210,31 @@ function OsintPanelInner({ isMobile, onSweepVisualize }: OsintPanelProps) {
 
     // ── VULN SCAN ──
     if (activeTab === 'vuln') {
-      const vulns = r.vulnerabilities || r.vulns || r.cves || [];
+      const vulns = Array.isArray(r.vulnerabilities || r.vulns || r.cves) ? (r.vulnerabilities || r.vulns || r.cves) : [];
       const exploits = vulns.filter((v: any) => v.is_exploit);
       const regularVulns = vulns.filter((v: any) => !v.is_exploit);
+      const descriptions = Array.isArray(r.descriptions) ? r.descriptions.filter((d: any) => d && typeof d.value === 'string') : [];
 
       return (
         <div>
+          <ScannerMetaBlock meta={scannerMeta} />
           <SectionHeader title="VULNERABILITY ASSESSMENT" icon={Bug} color="#FF3D3D" />
           <ResultRow label="Target" value={r.target || query} color="#FF3D3D" />
+          <ResultRow label="Status" value={r.status} />
+          <ResultRow label="CVE" value={r.cve_id} color="#FF3D3D" />
+          <ResultRow label="State" value={r.state} />
           <ResultRow label="Total CVEs" value={Array.isArray(vulns) ? vulns.length : 0} color={Array.isArray(vulns) && vulns.length > 0 ? '#FF3D3D' : '#00E676'} />
           <ResultRow label="Risk Level" value={r.risk_level || r.severity} />
+          {descriptions.length > 0 && (
+            <div className="mt-2 space-y-1">
+              {descriptions.slice(0, 3).map((d: any, i: number) => (
+                <div key={i} className="p-2 rounded-lg border border-red-500/20 bg-red-500/5">
+                  <div className="text-[8px] font-mono text-red-400 mb-1">DESCRIPTION {d.lang ? `(${String(d.lang).toUpperCase()})` : ''}</div>
+                  <p className="text-[9px] font-mono text-[var(--text-muted)] leading-relaxed">{d.value}</p>
+                </div>
+              ))}
+            </div>
+          )}
           {Array.isArray(regularVulns) && regularVulns.length > 0 && (
             <div className="mt-2 space-y-1">
               {regularVulns.slice(0, 20).map((v: any, i: number) => (
@@ -237,7 +270,7 @@ function OsintPanelInner({ isMobile, onSweepVisualize }: OsintPanelProps) {
             </div>
           )}
 
-          {(!Array.isArray(vulns) || vulns.length === 0) && renderFallback()}
+          {vulns.length === 0 && descriptions.length === 0 && renderFallback()}
         </div>
       );
     }
@@ -319,6 +352,31 @@ function OsintPanelInner({ isMobile, onSweepVisualize }: OsintPanelProps) {
       );
     }
 
+    // ── SUBDOMAINS ──
+    if (activeTab === 'subdomains') {
+      const subdomains = getStringArrayField(r, 'subdomains');
+      return (
+        <div>
+          <ScannerMetaBlock meta={scannerMeta} />
+          <SectionHeader title="PASSIVE SUBDOMAINS" icon={Layers} color="#00BCD4" />
+          <ResultRow label="Domain" value={r.target || query} color="#00BCD4" />
+          <ResultRow label="Status" value={r.status} />
+          <ResultRow label="Count" value={typeof r.count === 'number' ? r.count : subdomains.length} />
+          <ResultRow label="Source" value={r.source} />
+          {subdomains.length > 0 && (
+            <div className="mt-2 space-y-1 max-h-56 overflow-y-auto styled-scrollbar">
+              {subdomains.slice(0, 100).map((name) => (
+                <div key={name} className="px-2 py-1 rounded border border-[#00BCD4]/20 bg-[#00BCD4]/5 text-[10px] font-mono text-[var(--text-secondary)] break-all">
+                  {name}
+                </div>
+              ))}
+            </div>
+          )}
+          {subdomains.length === 0 && renderFallback()}
+        </div>
+      );
+    }
+
     // ── SSL ──
     if (activeTab === 'ssl') {
       return (
@@ -343,9 +401,10 @@ function OsintPanelInner({ isMobile, onSweepVisualize }: OsintPanelProps) {
 
   const renderFallback = () => {
     if (!results) return null;
+    const fallbackPayload = getScannerV2Payload(results) as Record<string, unknown>;
     return (
       <div className="space-y-1">
-        {Object.entries(results).filter(([k]) => !['timestamp','cached'].includes(k)).map(([key, value]) => (
+        {Object.entries(fallbackPayload).filter(([k]) => !['timestamp','cached'].includes(k)).map(([key, value]) => (
           <ResultRow key={key} label={key.replace(/_/g, ' ')} value={typeof value === 'object' ? JSON.stringify(value, null, 1) : String(value)} />
         ))}
       </div>
@@ -354,7 +413,8 @@ function OsintPanelInner({ isMobile, onSweepVisualize }: OsintPanelProps) {
 
   const renderFallbackExcluding = (exclude: string[]) => {
     if (!results) return null;
-    const extra = Object.entries(results).filter(([k]) => !exclude.includes(k));
+    const fallbackPayload = getScannerV2Payload(results) as Record<string, unknown>;
+    const extra = Object.entries(fallbackPayload).filter(([k]) => !exclude.includes(k));
     if (extra.length === 0) return null;
     return (
       <div className="mt-2 space-y-1">

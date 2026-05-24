@@ -15,6 +15,8 @@ async function loadRoute(env: Record<string, string | undefined> = {}) {
   delete process.env.SCANNER_KEY;
   delete process.env.SCANNER_ALLOWED_TARGETS;
   delete process.env.SCANNER_REQUIRE_VERIFICATION;
+  delete process.env.SCANNER_AUDIT_PERSISTENCE;
+  process.env.SCANNER_AUDIT_PERSISTENCE = 'console';
 
   for (const [key, value] of Object.entries(env)) {
     if (value === undefined) delete process.env[key];
@@ -34,6 +36,8 @@ afterEach(() => {
   delete process.env.SCANNER_KEY;
   delete process.env.SCANNER_ALLOWED_TARGETS;
   delete process.env.SCANNER_REQUIRE_VERIFICATION;
+  delete process.env.SCANNER_AUDIT_PERSISTENCE;
+  delete process.env.SCANNER_AUDIT_LOG_PATH;
 });
 
 describe('/api/scanner route policy integration', () => {
