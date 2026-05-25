@@ -163,13 +163,14 @@ X402_ENABLED=false
 ```
 
 > 💡 Current foundation routes are intentionally conservative:
-> `/api/auth/session`, `/api/platform/status`, `/api/reports`, and `/api/comms`
-> are wired with token auth, DB-backed entitlement checks/report persistence,
-> fail-closed premium checks, sanitized readiness metadata,
-> deterministic/local report generation, official Stripe Checkout/Portal/Webhook
-> foundations, and feature flags. Full OAuth, Redis queues/shared cache,
-> x402 facilitator settlement ledger wiring, and external AI providers remain
-> planned follow-up work.
+> `/api/auth/session`, `/api/platform/status`, `/api/reports`, `/api/x402/report`,
+> and `/api/comms` are wired with token auth where applicable, DB-backed
+> entitlement/report/payment-event checks, fail-closed premium/x402 gates,
+> sanitized readiness metadata, deterministic/local report generation,
+> official Stripe Checkout/Portal/Webhook foundations, and official x402
+> `withX402` exact-EVM pay-per-report settlement. Full OAuth, Redis
+> queues/shared cache, x402 enrichment/API routes, and external AI providers
+> remain planned follow-up work.
 
 ---
 
@@ -206,7 +207,7 @@ Fail-closed behavior:
 AegisGrid uses official provider SDKs instead of hand-rolled payment protocols:
 
 - Stripe: official `stripe`/stripe-node SDK for Checkout, Billing Portal, and webhook signature verification.
-- x402: official v2 package set is installed for the next pay-per-use slice (`@x402/next`, `@x402/evm`, `@coinbase/x402`). Route-level settlement/ledger wiring is still planned.
+- x402: official v2 package set is used (`@x402/next`, `@x402/evm`, `@coinbase/x402`) for the pay-per-report API endpoint (`POST /api/x402/report`), including exact EVM scheme verification, settlement, deterministic report persistence before settlement, and post-settlement database audit log tracking.
 
 Current Stripe routes:
 
@@ -348,7 +349,7 @@ npm run build  # full Next.js production build
 - [x] Postgres/Redis readiness surfaced in Docker Compose and sanitized platform status (Redis clients/queues still planned)
 - [x] Postgres commercial persistence foundation (schema, `pg` client/repository, DB-backed entitlements, report persistence fail-closed)
 - [x] Official Stripe SDK foundation (authenticated checkout sessions, billing portal route, raw-body webhook signature verification, live/test mode guard, DB idempotency claims, subscription entitlement/report-pack credit fulfillment)
-- [x] Official x402 v2 package selection installed for the next pay-per-use slice (`@x402/next`, `@x402/evm`, `@coinbase/x402`; no hand-rolled protocol verification)
+- [x] Official x402 v2 packages used for protected pay-per-report route (`POST /api/x402/report`) with exact EVM scheme, settlement, and post-settlement database audit log tracking
 - [x] Comms registry foundation behind `FEATURE_COMMS` with embed/link-out metadata and tactical-feed exclusion
 - [x] AIS readiness metadata in maritime route without fake live vessel telemetry
 
@@ -356,7 +357,6 @@ npm run build  # full Next.js production build
 - [ ] OAuth layer (GitHub/Google Auth.js or equivalent)
 - [ ] Redis job queue and shared cache for background feed refresh
 - [ ] External AI provider integration for situational reports (OpenAI/Hermes with citations and prompt-injection controls)
-- [ ] x402 paid report/enrichment routes using official `withX402` wrappers plus post-settlement credit ledger entries
 - [ ] Lawful radiosonde (balloons) source adapter
 - [ ] Radiation monitoring adapter (Safecast / EU networks)
 - [ ] Expanded AIS maritime tracking
