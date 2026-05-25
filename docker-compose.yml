@@ -6,10 +6,49 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - NODE_ENV=production
-      # Optional — uncomment and fill in to enhance data sources
-      # - OPENSKY_USERNAME=your_username
-      # - OPENSKY_PASSWORD=your_password
-      # - N2YO_API_KEY=your_key
-      # - AIS_API_KEY=your_key
+      NODE_ENV: production
+      NEXT_PUBLIC_APP_NAME: AegisGrid
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
+      DATABASE_URL: ${DATABASE_URL:-postgresql://aegisgrid:aegisgrid_dev_password@postgres:5432/aegisgrid}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      FEATURE_AI_REPORTS: ${FEATURE_AI_REPORTS:-false}
+      FEATURE_PREMIUM: ${FEATURE_PREMIUM:-false}
+      FEATURE_COMMS: ${FEATURE_COMMS:-false}
+      FEATURE_X402: ${FEATURE_X402:-false}
+      X402_ENABLED: ${X402_ENABLED:-false}
+      AI_PROVIDER: ${AI_PROVIDER:-none}
+      # Optional — set in .env for local enhancement; never commit real keys.
+      OPENSKY_CLIENT_ID: ${OPENSKY_CLIENT_ID:-}
+      OPENSKY_CLIENT_SECRET: ${OPENSKY_CLIENT_SECRET:-}
+      N2YO_API_KEY: ${N2YO_API_KEY:-}
+      AISSTREAM_API_KEY: ${AISSTREAM_API_KEY:-}
+      NASA_FIRMS_MAP_KEY: ${NASA_FIRMS_MAP_KEY:-}
+    depends_on:
+      - postgres
+      - redis
     restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-aegisgrid}
+      POSTGRES_USER: ${POSTGRES_USER:-aegisgrid}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-aegisgrid_dev_password}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:

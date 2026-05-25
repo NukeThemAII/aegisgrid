@@ -67,12 +67,38 @@ const CHOKEPOINTS = [
 ];
 
 export async function GET() {
+  const timestamp = new Date().toISOString();
+  const aisConfigured = Boolean(process.env.AISSTREAM_API_KEY?.trim());
+
   return NextResponse.json({
     ports: PORTS,
     chokepoints: CHOKEPOINTS,
     total_ports: PORTS.length,
     total_chokepoints: CHOKEPOINTS.length,
-    timestamp: new Date().toISOString(),
+    ais: {
+      status: aisConfigured ? 'configured_not_connected' : 'api_key_missing',
+      message: aisConfigured
+        ? 'AISStream API key is configured, but websocket ingestion is not run inside this serverless route yet.'
+        : 'AISStream API key is not configured; returning static maritime registry only.',
+      vessels: [],
+      source: {
+        source: 'AISStream readiness',
+        source_url: 'https://aisstream.io/',
+        fetched_at: timestamp,
+        license: 'source-specific',
+        attribution: 'No live AIS positions are returned by this route until the dedicated ingestion worker is implemented.',
+        confidence: 'low',
+      },
+    },
+    source: {
+      source: 'AegisGrid maritime static registry',
+      source_url: 'docs/sources.md',
+      fetched_at: timestamp,
+      license: 'curated open-source reference / source-specific',
+      attribution: 'Static ports and chokepoints are contextual reference data, not live vessel telemetry.',
+      confidence: 'medium',
+    },
+    timestamp,
   }, {
     headers: { 'Cache-Control': 'public, s-maxage=86400, stale-while-revalidate=172800' },
   });

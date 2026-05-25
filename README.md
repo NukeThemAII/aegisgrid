@@ -76,6 +76,7 @@ stays as an empty placeholder.
 | Media | HLS.js (live streams), sharp (image processing) |
 | Data libs | rss-parser, satellite.js |
 | Analytics | Vercel Analytics |
+| Platform foundation | Token API auth, fail-closed billing guard, deterministic report route, Postgres/Redis compose readiness |
 | Language | TypeScript 5 |
 
 ---
@@ -106,6 +107,15 @@ Copy `.env.example` → `.env.local`. Key groups:
 # ── Core ──────────────────────────────────────────
 NEXT_PUBLIC_APP_NAME=AegisGrid
 NEXT_PUBLIC_APP_URL=http://localhost:3000
+DATABASE_URL=postgresql://user:password@localhost:5432/aegisgrid
+REDIS_URL=redis://localhost:6379/0
+
+# ── Auth / premium foundation ─────────────────────
+AUTH_USER_TOKENS=        # subject-id:token pairs for API auth
+AUTH_ADMIN_TOKEN=        # operator/admin bearer token
+AUTH_USER_ENTITLEMENTS=  # subject-id:premium or subject-id:ai_report
+AUTH_GITHUB_ID=          # OAuth planned
+AUTH_GOOGLE_ID=          # OAuth planned
 
 # ── Scanner proxy (guarded) ──────────────────────
 SCANNER_URL=http://127.0.0.1:4007  # URL of your private scanner backend
@@ -132,15 +142,21 @@ CENSYS_API_ID=           CENSYS_API_SECRET=
 GREYNOISE_API_KEY=       SHODAN_API_KEY=
 N2YO_API_KEY=            IPCAMLIVE_API_SECRET=
 
-# ── Feature flags ────────────────────────────────
+# ── Feature flags / commercial readiness ──────────
 FEATURE_AI_REPORTS=false
+AI_PROVIDER=none         # deterministic enables local source-bounded reports
 FEATURE_COMMS=false
 FEATURE_PREMIUM=false
 FEATURE_X402=false
+X402_ENABLED=false
 ```
 
-> 💡 Planned variables for database, auth, Stripe, x402, AI, and Redis
-> exist in `.env.example` but are **not wired up yet**.
+> 💡 Current foundation routes are intentionally conservative:
+> `/api/auth/session`, `/api/platform/status`, `/api/reports`, and `/api/comms`
+> are wired with token auth, fail-closed premium checks, sanitized readiness
+> metadata, deterministic/local report generation, and feature flags. Full
+> OAuth, database persistence, Redis queues, Stripe webhooks, x402 facilitator
+> verification, and external AI providers remain planned follow-up work.
 
 ---
 
@@ -176,6 +192,10 @@ aegisgrid/
 │   │   ├── layout.tsx            # root layout, meta, fonts
 │   │   ├── globals.css           # Tailwind + custom styles
 │   │   └── api/                  # API route directories
+│   │       ├── auth/session          token auth session metadata
+│   │       ├── reports               feature-gated deterministic report foundation
+│   │       ├── platform/status       sanitized readiness for auth/db/redis/billing/feeds
+│   │       ├── comms                 feature-gated public source registry
 │   │       ├── earthquakes/          USGS feeds
 │   │       ├── fires/                NASA FIRMS + EONET
 │   │       ├── flights/              ADS-B / OpenSky
@@ -261,13 +281,17 @@ npm run build  # full Next.js production build
 - [x] Scanner V2 passive runner + in-process passive adapters (rDNS, WHOIS, CT subdomains, geoloc, CVE)
 - [x] Scanner audit persistence + source health endpoint (`/api/scanner/health`)
 - [x] Scanner auth boundary + entitlement verification scaffold (token subject auth, DNS TXT ownership verification, admin allowlist CRUD, audit export)
+- [x] Platform auth/billing/report foundation (general token auth, fail-closed premium guard, `/api/auth/session`, `/api/platform/status`, `/api/reports` deterministic provider)
+- [x] Postgres/Redis readiness surfaced in Docker Compose and sanitized platform status (clients/queues still planned)
+- [x] Comms registry foundation behind `FEATURE_COMMS` with embed/link-out metadata and tactical-feed exclusion
+- [x] AIS readiness metadata in maritime route without fake live vessel telemetry
 
 ### Up next
-- [ ] Auth layer (GitHub/Google OAuth)
-- [ ] Database persistence (PostgreSQL)
-- [ ] Redis job queue for background feed refresh
-- [ ] AI-generated situational reports (feature-flagged)
-- [ ] Stripe/x402 billing for premium tiers
+- [ ] OAuth layer (GitHub/Google Auth.js or equivalent)
+- [ ] Database persistence schema/client (users, entitlements, credit ledger, reports)
+- [ ] Redis job queue and shared cache for background feed refresh
+- [ ] External AI provider integration for situational reports (OpenAI/Hermes with citations and prompt-injection controls)
+- [ ] Stripe webhooks/checkout and x402 facilitator verification for real premium entitlement sync
 - [ ] Lawful radiosonde (balloons) source adapter
 - [ ] Radiation monitoring adapter (Safecast / EU networks)
 - [ ] Expanded AIS maritime tracking
