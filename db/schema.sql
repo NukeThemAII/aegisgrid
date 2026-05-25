@@ -9,9 +9,13 @@ CREATE TABLE IF NOT EXISTS users (
   subject_id text NOT NULL UNIQUE,
   email text UNIQUE,
   display_name text,
+  stripe_customer_id text UNIQUE,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
+
+ALTER TABLE users
+  ADD COLUMN IF NOT EXISTS stripe_customer_id text;
 
 CREATE TABLE IF NOT EXISTS entitlements (
   id text PRIMARY KEY,
@@ -57,13 +61,31 @@ CREATE TABLE IF NOT EXISTS reports (
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 
+CREATE TABLE IF NOT EXISTS payment_events (
+  id text PRIMARY KEY,
+  provider text NOT NULL CHECK (provider IN ('stripe', 'x402')),
+  event_id text NOT NULL,
+  event_type text NOT NULL,
+  status text NOT NULL CHECK (status IN ('processing', 'processed')),
+  metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  processed_at timestamptz,
+  UNIQUE (provider, event_id)
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_stripe_customer_id
+  ON users(stripe_customer_id)
+  WHERE stripe_customer_id IS NOT NULL;
+
 CREATE INDEX IF NOT EXISTS idx_users_subject_id
   ON users(subject_id);
 
 CREATE INDEX IF NOT EXISTS idx_entitlements_user_capability_status
   ON entitlements(user_id, capability, status, valid_until);
 
-CREATE INDEX IF NOT EXISTS idx_entitlements_external_ref
+DROP INDEX IF EXISTS idx_entitlements_external_ref;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_entitlements_external_ref
   ON entitlements(external_ref)
   WHERE external_ref IS NOT NULL;
 

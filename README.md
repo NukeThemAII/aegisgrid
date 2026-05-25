@@ -135,6 +135,15 @@ SCANNER_V2_PORT=4007
 SCANNER_AUDIT_PERSISTENCE=file
 SCANNER_AUDIT_LOG_PATH=.data/scanner-audit.jsonl
 
+# ── Stripe / x402 billing foundation ─────────────
+STRIPE_SECRET_KEY=        STRIPE_WEBHOOK_SECRET=
+STRIPE_LIVE_MODE=false    STRIPE_PRICE_PRO_MONTHLY=
+STRIPE_PRICE_PRO_YEARLY=  STRIPE_PRICE_REPORT_PACK=
+STRIPE_REPORT_PACK_CREDITS=10
+X402_ENABLED=false        X402_RECEIVING_ADDRESS=
+X402_FACILITATOR_URL=     X402_NETWORK=eip155:8453
+CDP_API_KEY_ID=           CDP_API_KEY_SECRET=
+
 # ── Optional enrichment API keys ─────────────────
 NASA_FIRMS_MAP_KEY=      AISSTREAM_API_KEY=
 OPENSKY_CLIENT_ID=       OPENSKY_CLIENT_SECRET=
@@ -157,9 +166,10 @@ X402_ENABLED=false
 > `/api/auth/session`, `/api/platform/status`, `/api/reports`, and `/api/comms`
 > are wired with token auth, DB-backed entitlement checks/report persistence,
 > fail-closed premium checks, sanitized readiness metadata,
-> deterministic/local report generation, and feature flags. Full OAuth, Redis
-> queues/shared cache, Stripe webhooks, x402 facilitator verification, and
-> external AI providers remain planned follow-up work.
+> deterministic/local report generation, official Stripe Checkout/Portal/Webhook
+> foundations, and feature flags. Full OAuth, Redis queues/shared cache,
+> x402 facilitator settlement ledger wiring, and external AI providers remain
+> planned follow-up work.
 
 ---
 
@@ -169,7 +179,7 @@ The Postgres foundation is now wired for commercial state:
 
 - schema: `db/schema.sql`
 - client/repository: `src/lib/db/postgres.ts`, `src/lib/db/app-repository.ts`
-- persisted tables: `users`, `entitlements`, `credit_ledger`, `reports`
+- persisted tables: `users`, `entitlements`, `credit_ledger`, `payment_events`, `reports`
 - report persistence seam: `src/lib/reports/report-store.ts`
 - premium checks: `src/lib/billing/guard.ts`
 
@@ -187,6 +197,22 @@ Fail-closed behavior:
 - DB errors deny premium access instead of falling back to static env grants.
 - Static `AUTH_USER_ENTITLEMENTS` are a dev fallback only when `DATABASE_URL` is unset, unless `AUTH_STATIC_ENTITLEMENTS_FALLBACK=true` and `NODE_ENV` is not `production`.
 - `/api/reports` returns `500 REPORT_PERSISTENCE_FAILED` if a configured DB cannot persist a generated report.
+- Stripe webhooks use `payment_events` claim-before-process idempotency and return `500 STRIPE_FULFILLMENT_FAILED` on DB write failures so Stripe can retry.
+
+---
+
+## 💳 Billing foundation
+
+AegisGrid uses official provider SDKs instead of hand-rolled payment protocols:
+
+- Stripe: official `stripe`/stripe-node SDK for Checkout, Billing Portal, and webhook signature verification.
+- x402: official v2 package set is installed for the next pay-per-use slice (`@x402/next`, `@x402/evm`, `@coinbase/x402`). Route-level settlement/ledger wiring is still planned.
+
+Current Stripe routes:
+
+- `POST /api/billing/checkout` — authenticated users only; creates Checkout sessions for configured Pro or report-pack price IDs; requires `DATABASE_URL` so webhook fulfillment can persist.
+- `POST /api/billing/portal` — authenticated users only; creates Stripe Billing Portal sessions for subjects with a stored `stripe_customer_id`.
+- `POST /api/billing/webhook` — raw-body Stripe signature verification, live/test mode guard via `STRIPE_LIVE_MODE`, DB claim-before-process idempotency, subscription entitlement upserts, and report-pack credit ledger entries.
 
 ---
 
@@ -321,6 +347,8 @@ npm run build  # full Next.js production build
 - [x] Platform auth/billing/report foundation (general token auth, fail-closed premium guard, `/api/auth/session`, `/api/platform/status`, `/api/reports` deterministic provider)
 - [x] Postgres/Redis readiness surfaced in Docker Compose and sanitized platform status (Redis clients/queues still planned)
 - [x] Postgres commercial persistence foundation (schema, `pg` client/repository, DB-backed entitlements, report persistence fail-closed)
+- [x] Official Stripe SDK foundation (authenticated checkout sessions, billing portal route, raw-body webhook signature verification, live/test mode guard, DB idempotency claims, subscription entitlement/report-pack credit fulfillment)
+- [x] Official x402 v2 package selection installed for the next pay-per-use slice (`@x402/next`, `@x402/evm`, `@coinbase/x402`; no hand-rolled protocol verification)
 - [x] Comms registry foundation behind `FEATURE_COMMS` with embed/link-out metadata and tactical-feed exclusion
 - [x] AIS readiness metadata in maritime route without fake live vessel telemetry
 
@@ -328,7 +356,7 @@ npm run build  # full Next.js production build
 - [ ] OAuth layer (GitHub/Google Auth.js or equivalent)
 - [ ] Redis job queue and shared cache for background feed refresh
 - [ ] External AI provider integration for situational reports (OpenAI/Hermes with citations and prompt-injection controls)
-- [ ] Stripe webhooks/checkout and x402 facilitator verification for real premium entitlement sync
+- [ ] x402 paid report/enrichment routes using official `withX402` wrappers plus post-settlement credit ledger entries
 - [ ] Lawful radiosonde (balloons) source adapter
 - [ ] Radiation monitoring adapter (Safecast / EU networks)
 - [ ] Expanded AIS maritime tracking
