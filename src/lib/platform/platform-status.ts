@@ -1,3 +1,5 @@
+import { databaseProvider, isDatabaseConfigured } from '@/lib/db/postgres';
+
 type ServiceStatus = 'configured' | 'unconfigured';
 
 type RedisStatus = 'memory_fallback' | 'redis_configured_memory_fallback';
@@ -18,7 +20,7 @@ export interface PlatformStatus {
   database: {
     status: ServiceStatus;
     provider: string | null;
-    persistence: 'not_wired' | 'planned';
+    persistence: 'wired' | 'planned';
   };
   redis: {
     status: RedisStatus;
@@ -34,7 +36,7 @@ export interface PlatformStatus {
     stripe_configured: boolean;
     x402_enabled: boolean;
     x402_configured: boolean;
-    entitlement_store: 'static_env' | 'planned_database';
+    entitlement_store: 'database' | 'static_env' | 'planned_database';
   };
   feeds: {
     balloons: { status: 'source_unavailable' };
@@ -52,16 +54,6 @@ function flagEnabled(value: string | undefined): boolean {
 
 function configured(value: string | undefined): boolean {
   return Boolean(value?.trim());
-}
-
-function databaseProvider(url: string | undefined): string | null {
-  if (!url?.trim()) return null;
-  try {
-    const parsed = new URL(url);
-    return parsed.protocol.replace(/:$/, '') || 'unknown';
-  } catch {
-    return 'unknown';
-  }
 }
 
 function aiProviderConfigured(provider: string): boolean {
@@ -83,6 +75,7 @@ export function getPlatformStatus(now = new Date().toISOString()): PlatformStatu
   const githubConfigured = configured(process.env.AUTH_GITHUB_ID) && configured(process.env.AUTH_GITHUB_SECRET);
   const googleConfigured = configured(process.env.AUTH_GOOGLE_ID) && configured(process.env.AUTH_GOOGLE_SECRET);
   const x402Enabled = flagEnabled(process.env.X402_ENABLED) || flagEnabled(process.env.FEATURE_X402);
+  const databaseConfigured = isDatabaseConfigured();
 
   return {
     generated_at: now,
@@ -96,9 +89,9 @@ export function getPlatformStatus(now = new Date().toISOString()): PlatformStatu
       },
     },
     database: {
-      status: configured(process.env.DATABASE_URL) ? 'configured' : 'unconfigured',
+      status: databaseConfigured ? 'configured' : 'unconfigured',
       provider: databaseProvider(process.env.DATABASE_URL),
-      persistence: configured(process.env.DATABASE_URL) ? 'not_wired' : 'planned',
+      persistence: databaseConfigured ? 'wired' : 'planned',
     },
     redis: {
       status: configured(process.env.REDIS_URL) ? 'redis_configured_memory_fallback' : 'memory_fallback',
@@ -115,7 +108,9 @@ export function getPlatformStatus(now = new Date().toISOString()): PlatformStatu
         && (configured(process.env.STRIPE_PRICE_PRO_MONTHLY) || configured(process.env.STRIPE_PRICE_REPORT_PACK) || configured(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)),
       x402_enabled: x402Enabled,
       x402_configured: x402Enabled && configured(process.env.X402_RECEIVING_ADDRESS) && configured(process.env.X402_FACILITATOR_URL),
-      entitlement_store: configured(process.env.AUTH_USER_ENTITLEMENTS) ? 'static_env' : 'planned_database',
+      entitlement_store: databaseConfigured
+        ? 'database'
+        : configured(process.env.AUTH_USER_ENTITLEMENTS) ? 'static_env' : 'planned_database',
     },
     feeds: {
       balloons: { status: 'source_unavailable' },

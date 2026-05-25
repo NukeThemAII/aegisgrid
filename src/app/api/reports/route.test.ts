@@ -28,6 +28,7 @@ function makeRequest(body: unknown, token?: string): Request {
 
 afterEach(() => {
   vi.restoreAllMocks();
+  vi.doUnmock('@/lib/reports/report-store');
   clearReportEnv();
 });
 
@@ -99,5 +100,29 @@ describe('/api/reports', () => {
     expect(body.report.markdown).toContain('AISStream API key configured');
     expect(body.persistence.status).toBe('skipped_unconfigured');
     expect(serialized).not.toContain('token');
+  });
+
+  it('fails closed when configured report persistence fails', async () => {
+    vi.resetModules();
+    process.env.FEATURE_AI_REPORTS = 'true';
+    process.env.FEATURE_PREMIUM = 'true';
+    process.env.AI_PROVIDER = 'deterministic';
+    process.env.AUTH_ADMIN_TOKEN = 'admin-token';
+    process.env.DATABASE_URL = 'postgresql://user:pass@localhost:5432/aegisgrid';
+    vi.doMock('@/lib/reports/report-store', () => ({
+      persistReportRecord: vi.fn(async () => ({
+        persisted: false,
+        status: 'failed',
+        reason: 'Database report persistence failed.',
+      })),
+    }));
+    const { POST } = await import('./route');
+
+    const res = await POST(makeRequest({ topic: 'Strait of Hormuz', sources: [] }, 'admin-token'));
+    const body = await res.json();
+
+    expect(res.status).toBe(500);
+    expect(body.code).toBe('REPORT_PERSISTENCE_FAILED');
+    expect(JSON.stringify(body)).not.toContain('pass');
   });
 });

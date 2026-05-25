@@ -76,7 +76,7 @@ stays as an empty placeholder.
 | Media | HLS.js (live streams), sharp (image processing) |
 | Data libs | rss-parser, satellite.js |
 | Analytics | Vercel Analytics |
-| Platform foundation | Token API auth, fail-closed billing guard, deterministic report route, Postgres/Redis compose readiness |
+| Platform foundation | Token API auth, fail-closed billing guard, DB-backed entitlements/report persistence, deterministic report route, Postgres/Redis compose readiness |
 | Language | TypeScript 5 |
 
 ---
@@ -108,12 +108,14 @@ Copy `.env.example` → `.env.local`. Key groups:
 NEXT_PUBLIC_APP_NAME=AegisGrid
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 DATABASE_URL=postgresql://user:password@localhost:5432/aegisgrid
+DATABASE_POOL_MAX=5
 REDIS_URL=redis://localhost:6379/0
 
 # ── Auth / premium foundation ─────────────────────
 AUTH_USER_TOKENS=        # subject-id:token pairs for API auth
 AUTH_ADMIN_TOKEN=        # operator/admin bearer token
 AUTH_USER_ENTITLEMENTS=  # subject-id:premium or subject-id:ai_report
+AUTH_STATIC_ENTITLEMENTS_FALLBACK=false  # non-production DB-backed dev fallback only
 AUTH_GITHUB_ID=          # OAuth planned
 AUTH_GOOGLE_ID=          # OAuth planned
 
@@ -153,10 +155,38 @@ X402_ENABLED=false
 
 > 💡 Current foundation routes are intentionally conservative:
 > `/api/auth/session`, `/api/platform/status`, `/api/reports`, and `/api/comms`
-> are wired with token auth, fail-closed premium checks, sanitized readiness
-> metadata, deterministic/local report generation, and feature flags. Full
-> OAuth, database persistence, Redis queues, Stripe webhooks, x402 facilitator
-> verification, and external AI providers remain planned follow-up work.
+> are wired with token auth, DB-backed entitlement checks/report persistence,
+> fail-closed premium checks, sanitized readiness metadata,
+> deterministic/local report generation, and feature flags. Full OAuth, Redis
+> queues/shared cache, Stripe webhooks, x402 facilitator verification, and
+> external AI providers remain planned follow-up work.
+
+---
+
+## 🗄️ Database persistence
+
+The Postgres foundation is now wired for commercial state:
+
+- schema: `db/schema.sql`
+- client/repository: `src/lib/db/postgres.ts`, `src/lib/db/app-repository.ts`
+- persisted tables: `users`, `entitlements`, `credit_ledger`, `reports`
+- report persistence seam: `src/lib/reports/report-store.ts`
+- premium checks: `src/lib/billing/guard.ts`
+
+Apply the schema locally:
+
+```bash
+psql "$DATABASE_URL" -f db/schema.sql
+# or with docker compose defaults:
+docker compose exec -T postgres psql -U aegisgrid -d aegisgrid < db/schema.sql
+```
+
+Fail-closed behavior:
+
+- When `DATABASE_URL` is configured, premium checks query active DB entitlements first.
+- DB errors deny premium access instead of falling back to static env grants.
+- Static `AUTH_USER_ENTITLEMENTS` are a dev fallback only when `DATABASE_URL` is unset, unless `AUTH_STATIC_ENTITLEMENTS_FALLBACK=true` and `NODE_ENV` is not `production`.
+- `/api/reports` returns `500 REPORT_PERSISTENCE_FAILED` if a configured DB cannot persist a generated report.
 
 ---
 
@@ -214,8 +244,13 @@ aegisgrid/
 │   │   ├── LayerPanel.tsx            layer toggle sidebar
 │   │   └── ...                       markets, search, camera, etc.
 │   ├── lib/
+│   │   ├── ai/report-generator.ts   deterministic/source-bounded report helper
+│   │   ├── auth/app-auth.ts         token subject parsing
+│   │   ├── billing/guard.ts         fail-closed premium access checks
+│   │   ├── db/                      Postgres client + app repository
 │   │   ├── features.ts              feature flag guard
 │   │   ├── html.ts                   popup HTML escaping
+│   │   ├── reports/report-store.ts  report persistence seam
 │   │   ├── ssrf-guard.ts            SSRF protection for proxied URLs
 │   │   └── bulgaria-sources.ts      regional source config
 │   ├── server/
@@ -224,6 +259,8 @@ aegisgrid/
 ├── docs/
 │   ├── scanner-v2.md             # Scanner V2 local service notes
 │   └── sources.md                # source register + licensing notes
+├── db/
+│   └── schema.sql                 # Postgres commercial persistence schema
 ├── public/                       # logos, favicons, manifest, OG image
 ├── .env.example                  # all env vars with annotations
 ├── Dockerfile                    # container build
@@ -282,13 +319,13 @@ npm run build  # full Next.js production build
 - [x] Scanner audit persistence + source health endpoint (`/api/scanner/health`)
 - [x] Scanner auth boundary + entitlement verification scaffold (token subject auth, DNS TXT ownership verification, admin allowlist CRUD, audit export)
 - [x] Platform auth/billing/report foundation (general token auth, fail-closed premium guard, `/api/auth/session`, `/api/platform/status`, `/api/reports` deterministic provider)
-- [x] Postgres/Redis readiness surfaced in Docker Compose and sanitized platform status (clients/queues still planned)
+- [x] Postgres/Redis readiness surfaced in Docker Compose and sanitized platform status (Redis clients/queues still planned)
+- [x] Postgres commercial persistence foundation (schema, `pg` client/repository, DB-backed entitlements, report persistence fail-closed)
 - [x] Comms registry foundation behind `FEATURE_COMMS` with embed/link-out metadata and tactical-feed exclusion
 - [x] AIS readiness metadata in maritime route without fake live vessel telemetry
 
 ### Up next
 - [ ] OAuth layer (GitHub/Google Auth.js or equivalent)
-- [ ] Database persistence schema/client (users, entitlements, credit ledger, reports)
 - [ ] Redis job queue and shared cache for background feed refresh
 - [ ] External AI provider integration for situational reports (OpenAI/Hermes with citations and prompt-injection controls)
 - [ ] Stripe webhooks/checkout and x402 facilitator verification for real premium entitlement sync

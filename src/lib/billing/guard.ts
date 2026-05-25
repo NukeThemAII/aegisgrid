@@ -1,13 +1,21 @@
 import type { AppSubject } from '@/lib/auth/app-auth';
+import type { AppRepository, PremiumCapability } from '@/lib/db/app-repository';
+import { getDefaultAppRepository } from '@/lib/db/app-repository';
+import { isDatabaseConfigured } from '@/lib/db/postgres';
 
-export type PremiumCapability = 'ai_report' | 'api_access' | 'premium';
+export type { PremiumCapability };
 
 export interface PremiumAccessDecision {
   allowed: boolean;
   status: number;
   code: 'OK' | 'AUTH_REQUIRED' | 'PREMIUM_DISABLED' | 'ENTITLEMENT_REQUIRED' | 'BILLING_CHECK_FAILED';
   reason: string;
-  source: 'admin' | 'static_entitlement' | 'none' | 'error';
+  source: 'admin' | 'db_entitlement' | 'static_entitlement' | 'none' | 'error';
+}
+
+export interface PremiumAccessOptions {
+  repository?: Pick<AppRepository, 'findActiveEntitlement'>;
+  now?: Date;
 }
 
 function flagEnabled(value: string | undefined): boolean {
@@ -20,20 +28,21 @@ function hasEntitlement(subject: AppSubject, capability: PremiumCapability): boo
   return subject.entitlements.includes(capability);
 }
 
-function hasAnyPaidProviderConfigured(): boolean {
-  const stripeConfigured = Boolean(
-    process.env.STRIPE_SECRET_KEY?.trim()
-      && (process.env.STRIPE_PRICE_PRO_MONTHLY?.trim() || process.env.STRIPE_PRICE_REPORT_PACK?.trim()),
-  );
-  const x402Configured = flagEnabled(process.env.X402_ENABLED) && Boolean(
-    process.env.X402_RECEIVING_ADDRESS?.trim() && process.env.X402_FACILITATOR_URL?.trim(),
-  );
-  return stripeConfigured || x402Configured;
+function staticFallbackAllowed(): boolean {
+  if (process.env.NODE_ENV === 'production') return false;
+  if (!isDatabaseConfigured()) return true;
+  return process.env.AUTH_STATIC_ENTITLEMENTS_FALLBACK === 'true';
+}
+
+function databaseRepository(options: PremiumAccessOptions): Pick<AppRepository, 'findActiveEntitlement'> | null {
+  if (!isDatabaseConfigured()) return null;
+  return options.repository ?? getDefaultAppRepository();
 }
 
 export async function verifyPremiumAccess(
   subject: AppSubject,
   capability: PremiumCapability,
+  options: PremiumAccessOptions = {},
 ): Promise<PremiumAccessDecision> {
   try {
     if (subject.role === 'anonymous' || !subject.subjectId) {
@@ -66,7 +75,25 @@ export async function verifyPremiumAccess(
       };
     }
 
-    if (hasEntitlement(subject, capability)) {
+    const repository = databaseRepository(options);
+    if (repository) {
+      const entitlement = await repository.findActiveEntitlement(
+        subject.subjectId,
+        capability,
+        options.now ?? new Date(),
+      );
+      if (entitlement) {
+        return {
+          allowed: true,
+          status: 200,
+          code: 'OK',
+          reason: 'Database entitlement authorized the request.',
+          source: 'db_entitlement',
+        };
+      }
+    }
+
+    if (staticFallbackAllowed() && hasEntitlement(subject, capability)) {
       return {
         allowed: true,
         status: 200,
@@ -75,11 +102,6 @@ export async function verifyPremiumAccess(
         source: 'static_entitlement',
       };
     }
-
-    // Stripe and x402 verification will be wired after database-backed
-    // entitlement persistence exists. Until then, configured providers never
-    // cause a fail-open approval; they only affect operator status metadata.
-    hasAnyPaidProviderConfigured();
 
     return {
       allowed: false,

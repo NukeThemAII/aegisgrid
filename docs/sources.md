@@ -22,7 +22,8 @@ This is the initial V2 foundation source register. Each production adapter shoul
 | Scanner proxy | Separate scanner backend only | `SCANNER_URL` | `SCANNER_URL` and `SCANNER_KEY` | on demand | Active scans require authorization/ownership verification; route returns 503 when unconfigured | guarded |
 | Auth/session foundation | Token-auth session metadata for API/premium gates | `/api/auth/session` | optional `AUTH_USER_TOKENS`, `AUTH_ADMIN_TOKEN`, `AUTH_USER_ENTITLEMENTS` | on demand | Server-side only; OAuth still planned; never expose token material | active foundation |
 | Platform readiness | Sanitized status for auth, DB, Redis, AI, billing, feeds, comms | `/api/platform/status` | none | on demand | Redacts secrets; reports readiness only, not production health guarantees | active foundation |
-| AI reports foundation | Deterministic source-bounded report generator | `/api/reports` | `FEATURE_AI_REPORTS=true`, `FEATURE_PREMIUM=true`, `AI_PROVIDER=deterministic`, auth entitlement | on demand | No external AI by default; report only summarizes supplied sources and marks gaps | active foundation |
+| Postgres persistence | Users, entitlements, credit ledger, and reports schema/repository | `db/schema.sql`, `src/lib/db/*` | `DATABASE_URL` | on demand | Parameterized queries only; DB errors fail closed for premium/report flows | active foundation |
+| AI reports foundation | Deterministic source-bounded report generator with optional DB persistence | `/api/reports` | `FEATURE_AI_REPORTS=true`, `FEATURE_PREMIUM=true`, `AI_PROVIDER=deterministic`, auth entitlement | on demand | No external AI by default; report only summarizes supplied sources and marks gaps; configured DB write failure returns 500 | active foundation |
 | Comms registry | Public radio/SDR/agency link-out metadata behind feature flag | `/api/comms` | `FEATURE_COMMS=true` | static/periodic | Excludes tactical police feeds; honors `embed_allowed`; source terms must be followed | active foundation |
 | Balloons/radiosondes | TBD | TBD | TBD | TBD | Source/licensing review required before real adapter | placeholder returns empty |
 | Radiation | TBD (Safecast/EU public networks under review) | TBD | TBD | TBD | Source/licensing review required before real adapter | placeholder returns empty |
@@ -31,5 +32,6 @@ Notes:
 - Placeholder routes intentionally return empty normalized responses with `status: source_unavailable` instead of fake telemetry.
 - AIS readiness metadata intentionally returns an empty `vessels` array until a dedicated, lawful ingestion worker exists.
 - Deterministic AI report mode is source-bounded and must mark missing adapter payloads as `Not Recorded` rather than inventing facts.
+- Premium/report database paths use parameterized SQL through `pg`; if a configured DB errors, access/report persistence fails closed.
 - Any simulated UI metric must be labeled as demo-only until wired to real backend telemetry.
 - Do not scrape or embed sources that prohibit automated collection or third-party embedding.

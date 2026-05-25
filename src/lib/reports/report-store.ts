@@ -1,19 +1,33 @@
 import type { GeneratedReport } from '@/lib/ai/report-generator';
+import type { AppRepository } from '@/lib/db/app-repository';
+import { getDefaultAppRepository } from '@/lib/db/app-repository';
+import { isDatabaseConfigured } from '@/lib/db/postgres';
+
+export type ReportPersistenceStatus = 'skipped_unconfigured' | 'persisted' | 'failed';
 
 export interface ReportPersistenceResult {
   persisted: boolean;
-  status: 'skipped_unconfigured' | 'skipped_unwired';
+  status: ReportPersistenceStatus;
   reason: string;
+  record_id?: string;
+  created_at?: string;
+}
+
+export interface ReportPersistenceOptions {
+  repository?: Pick<AppRepository, 'persistReport'>;
+  sourcePayload?: unknown;
+}
+
+function repositoryFromOptions(options: ReportPersistenceOptions): Pick<AppRepository, 'persistReport'> {
+  return options.repository ?? getDefaultAppRepository();
 }
 
 export async function persistReportRecord(
-  _subjectId: string,
-  _report: GeneratedReport,
+  subjectId: string,
+  report: GeneratedReport,
+  options: ReportPersistenceOptions = {},
 ): Promise<ReportPersistenceResult> {
-  // Database persistence is intentionally not implemented until the Postgres
-  // client/schema migration lands. This function centralizes the seam so report
-  // routes can be wired without silently pretending persistence exists.
-  if (!process.env.DATABASE_URL?.trim()) {
+  if (!isDatabaseConfigured()) {
     return {
       persisted: false,
       status: 'skipped_unconfigured',
@@ -21,9 +35,25 @@ export async function persistReportRecord(
     };
   }
 
-  return {
-    persisted: false,
-    status: 'skipped_unwired',
-    reason: 'DATABASE_URL is configured, but the report persistence adapter is not wired yet.',
-  };
+  try {
+    const stored = await repositoryFromOptions(options).persistReport(
+      subjectId,
+      report,
+      options.sourcePayload ?? {},
+    );
+
+    return {
+      persisted: true,
+      status: 'persisted',
+      reason: 'Report persisted to PostgreSQL.',
+      record_id: stored.id,
+      created_at: stored.created_at,
+    };
+  } catch {
+    return {
+      persisted: false,
+      status: 'failed',
+      reason: 'Database report persistence failed.',
+    };
+  }
 }

@@ -59,7 +59,16 @@ export async function POST(req: Request) {
   }
 
   const report = generateDeterministicReport(parsed.value);
-  const persistence = await persistReportRecord(subject.subjectId ?? 'unknown', report);
+  const persistence = await persistReportRecord(subject.subjectId ?? 'unknown', report, {
+    sourcePayload: parsed.value,
+  });
+
+  if (persistence.status === 'failed') {
+    return NextResponse.json({
+      error: persistence.reason,
+      code: 'REPORT_PERSISTENCE_FAILED',
+    }, { status: 500 });
+  }
 
   return NextResponse.json({
     ok: true,
