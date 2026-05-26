@@ -1,17 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { generateDeterministicReport, parseReportRequest } from '@/lib/ai/report-generator';
+import { enrichmentToReport, generateDeterministicEnrichment, parseEnrichmentRequest } from '@/lib/enrichment/enrichment-generator';
 import { persistReportRecord } from '@/lib/reports/report-store';
-import {
-  buildProtectedX402Handler,
-  createX402SettlementRecorder,
-  loadX402RouteConfig,
-  parseUsdAmount,
-  x402PaymentEventId,
-} from '@/lib/x402/server';
+import { buildProtectedX402Handler, createX402SettlementRecorder, loadX402RouteConfig } from '@/lib/x402/server';
 
 export const runtime = 'nodejs';
 
-async function reportHandler(req: NextRequest): Promise<NextResponse> {
+async function enrichHandler(req: NextRequest): Promise<NextResponse> {
   let input: unknown;
   try {
     input = await req.json();
@@ -22,7 +16,7 @@ async function reportHandler(req: NextRequest): Promise<NextResponse> {
     }, { status: 400 });
   }
 
-  const parsed = parseReportRequest(input);
+  const parsed = parseEnrichmentRequest(input);
   if (!parsed.ok) {
     return NextResponse.json({
       error: parsed.error,
@@ -30,24 +24,31 @@ async function reportHandler(req: NextRequest): Promise<NextResponse> {
     }, { status: 400 });
   }
 
-  const report = generateDeterministicReport(parsed.value);
-  const persistence = await persistReportRecord('x402_paid_reports', report, {
-    sourcePayload: { ...parsed.value, payment_provider: 'x402', artifact_type: 'x402_report' },
+  const enrichment = generateDeterministicEnrichment(parsed.value);
+  const report = enrichmentToReport(enrichment);
+  const persistence = await persistReportRecord('x402_paid_enrichments', report, {
+    sourcePayload: {
+      ...parsed.value,
+      payment_provider: 'x402',
+      artifact_type: 'x402_enrichment',
+      enrichment_id: enrichment.enrichment_id,
+    },
   });
   if (persistence.status === 'failed') {
     return NextResponse.json({
       error: persistence.reason,
-      code: 'REPORT_PERSISTENCE_FAILED',
+      code: 'ENRICHMENT_PERSISTENCE_FAILED',
     }, { status: 500 });
   }
 
   return NextResponse.json({
     ok: true,
+    enrichment,
     report,
     persistence,
     payment: {
       provider: 'x402',
-      price: process.env.X402_REPORT_PRICE_USDC,
+      price: process.env.X402_API_PRICE_USDC,
       network: process.env.X402_NETWORK,
     },
   }, {
@@ -57,29 +58,18 @@ async function reportHandler(req: NextRequest): Promise<NextResponse> {
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const config = loadX402RouteConfig({
-    routeLabel: 'reports',
-    priceEnvName: 'X402_REPORT_PRICE_USDC',
-    requireDeterministicReports: true,
+    routeLabel: 'enrichment',
+    priceEnvName: 'X402_API_PRICE_USDC',
   });
   if (!config.ok) {
     return NextResponse.json({ error: config.error, code: config.code }, { status: 503 });
   }
 
-  return buildProtectedX402Handler(config.value, reportHandler, {
-    description: 'AegisGrid source-bounded situational report',
+  return buildProtectedX402Handler(config.value, enrichHandler, {
+    description: 'AegisGrid source/data enrichment',
     onAfterSettle: createX402SettlementRecorder({
-      reason: 'x402_report_payment',
+      reason: 'x402_enrich_payment',
       amountUsdc: config.value.amountUsdc,
     }),
   })(req);
 }
-
-export const __test__ = {
-  parseUsdAmount,
-  x402ReportConfig: () => loadX402RouteConfig({
-    routeLabel: 'reports',
-    priceEnvName: 'X402_REPORT_PRICE_USDC',
-    requireDeterministicReports: true,
-  }),
-  x402PaymentEventId,
-};

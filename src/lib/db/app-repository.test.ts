@@ -115,6 +115,62 @@ describe('Postgres app repository', () => {
     expect(allSql).toContain('RETURNING status');
   });
 
+  it('finds x402 audit records by transaction and linked report id using parameterized SQL', async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce({ rows: [{
+        provider: 'x402',
+        event_id: 'eip155:84532:0xabc123',
+        event_type: 'x402.payment.settled',
+        status: 'processed',
+        metadata: { transaction: '0xabc123', paid_result: { report_id: 'report_123' } },
+        created_at: '2026-05-26T10:00:00.000Z',
+        updated_at: '2026-05-26T10:00:00.000Z',
+        processed_at: '2026-05-26T10:00:00.000Z',
+      }] })
+      .mockResolvedValueOnce({ rows: [{
+        id: 'db_report_1',
+        report_id: 'report_123',
+        subject_id: 'x402_paid_reports',
+        topic: 'Paid report',
+        region: null,
+        status: 'completed',
+        confidence: 'medium',
+        model: 'aegisgrid-deterministic-report-v1',
+        markdown: 'paid report markdown',
+        citations: [],
+        source_payload: { payment_provider: 'x402' },
+        generated_at: '2026-05-26T10:00:00.000Z',
+        created_at: '2026-05-26T10:00:00.000Z',
+        updated_at: '2026-05-26T10:00:00.000Z',
+      }] })
+      .mockResolvedValueOnce({ rows: [{
+        id: 'ledger_1',
+        subject_id: 'x402_0x2222222222222222222222222222222222222222',
+        direction: 'credit',
+        amount_usdc: '1.000000',
+        credits_delta: 0,
+        reason: 'x402_report_payment',
+        external_ref: 'x402:eip155:84532:0xabc123',
+        metadata: { transaction: '0xabc123' },
+        created_at: '2026-05-26T10:00:00.000Z',
+      }] });
+    const { createPostgresAppRepository } = await import('./app-repository');
+    const repo = createPostgresAppRepository({ query });
+
+    const records = await repo.findX402AuditRecords({ transaction: '0xabc123' });
+
+    expect(records.paymentEvents[0].event_id).toBe('eip155:84532:0xabc123');
+    expect(records.reports[0].report_id).toBe('report_123');
+    expect(records.creditLedger[0].external_ref).toBe('x402:eip155:84532:0xabc123');
+    expect(query).toHaveBeenCalledTimes(3);
+    const allSql = query.mock.calls.map((call) => String(call[0])).join('\n');
+    expect(allSql).toContain("provider = 'x402'");
+    expect(allSql).toContain("metadata->>'transaction'");
+    expect(allSql).toContain('r.source_payload->>\'payment_provider\' = \'x402\'');
+    expect(allSql).not.toContain('0xabc123');
+  });
+
   it('upserts billing users, entitlements, and credit ledger rows with parameterized SQL', async () => {
     const query = vi
       .fn()

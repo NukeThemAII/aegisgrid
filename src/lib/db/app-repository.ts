@@ -20,6 +20,58 @@ export interface StoredReportRecord {
   created_at: string;
 }
 
+export interface X402ReportAuditRecord {
+  id: string;
+  report_id: string;
+  subject_id: string;
+  topic: string;
+  region: string | null;
+  status: string;
+  confidence: string;
+  model: string;
+  markdown: string;
+  citations: unknown;
+  source_payload: unknown;
+  generated_at: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+export interface X402PaymentEventAuditRecord {
+  provider: 'x402';
+  event_id: string;
+  event_type: string;
+  status: string;
+  metadata: unknown;
+  created_at: string | null;
+  updated_at: string | null;
+  processed_at: string | null;
+}
+
+export interface X402CreditLedgerAuditRecord {
+  id: string;
+  subject_id: string;
+  direction: string;
+  amount_usdc: string | null;
+  credits_delta: number;
+  reason: string;
+  external_ref: string | null;
+  metadata: unknown;
+  created_at: string | null;
+}
+
+export interface X402AuditLookup {
+  reportId?: string;
+  transaction?: string;
+  paymentEventId?: string;
+}
+
+export interface X402AuditRecords {
+  reports: X402ReportAuditRecord[];
+  paymentEvents: X402PaymentEventAuditRecord[];
+  creditLedger: X402CreditLedgerAuditRecord[];
+}
+
 export interface QueryExecutor {
   query(text: string, values?: readonly unknown[]): Promise<{ rows: Array<Record<string, unknown>> }>;
 }
@@ -27,6 +79,7 @@ export interface QueryExecutor {
 export interface AppRepository {
   findActiveEntitlement(subjectId: string, capability: PremiumCapability, now?: Date): Promise<ActiveEntitlement | null>;
   persistReport(subjectId: string, report: GeneratedReport, sourcePayload?: unknown): Promise<StoredReportRecord>;
+  findX402AuditRecords(input: X402AuditLookup): Promise<X402AuditRecords>;
   claimPaymentEvent(provider: 'stripe' | 'x402', eventId: string, eventType: string, metadata?: unknown): Promise<PaymentEventClaimStatus>;
   markPaymentEventProcessed(provider: 'stripe' | 'x402', eventId: string, metadata?: unknown): Promise<void>;
   releasePaymentEventClaim(provider: 'stripe' | 'x402', eventId: string): Promise<void>;
@@ -62,6 +115,11 @@ function stringifyDbDate(value: unknown): string | null {
   return String(value);
 }
 
+function stringOrNull(value: unknown): string | null {
+  if (value === null || value === undefined) return null;
+  return String(value);
+}
+
 function normalizeEntitlementRow(row: Record<string, unknown>): ActiveEntitlement {
   return {
     id: String(row.id),
@@ -77,6 +135,66 @@ function normalizeStoredReport(row: Record<string, unknown>): StoredReportRecord
     id: String(row.id),
     created_at: stringifyDbDate(row.created_at) ?? new Date().toISOString(),
   };
+}
+
+function normalizeX402ReportAudit(row: Record<string, unknown>): X402ReportAuditRecord {
+  return {
+    id: String(row.id),
+    report_id: String(row.report_id),
+    subject_id: String(row.subject_id),
+    topic: String(row.topic),
+    region: stringifyDbDate(row.region),
+    status: String(row.status),
+    confidence: String(row.confidence),
+    model: String(row.model),
+    markdown: String(row.markdown),
+    citations: row.citations ?? [],
+    source_payload: row.source_payload ?? {},
+    generated_at: stringifyDbDate(row.generated_at),
+    created_at: stringifyDbDate(row.created_at),
+    updated_at: stringifyDbDate(row.updated_at),
+  };
+}
+
+function normalizeX402PaymentEventAudit(row: Record<string, unknown>): X402PaymentEventAuditRecord {
+  return {
+    provider: 'x402',
+    event_id: String(row.event_id),
+    event_type: String(row.event_type),
+    status: String(row.status),
+    metadata: row.metadata ?? {},
+    created_at: stringifyDbDate(row.created_at),
+    updated_at: stringifyDbDate(row.updated_at),
+    processed_at: stringifyDbDate(row.processed_at),
+  };
+}
+
+function normalizeX402CreditLedgerAudit(row: Record<string, unknown>): X402CreditLedgerAuditRecord {
+  return {
+    id: String(row.id),
+    subject_id: String(row.subject_id),
+    direction: String(row.direction),
+    amount_usdc: stringOrNull(row.amount_usdc),
+    credits_delta: Number(row.credits_delta ?? 0),
+    reason: String(row.reason),
+    external_ref: stringOrNull(row.external_ref),
+    metadata: row.metadata ?? {},
+    created_at: stringifyDbDate(row.created_at),
+  };
+}
+
+function jsonObject(value: unknown): Record<string, unknown> | null {
+  return typeof value === 'object' && value !== null && !Array.isArray(value) ? value as Record<string, unknown> : null;
+}
+
+function linkedReportIdFromPaymentMetadata(metadata: unknown): string | null {
+  const paidResult = jsonObject(jsonObject(metadata)?.paid_result);
+  const reportId = paidResult?.report_id;
+  return typeof reportId === 'string' && reportId ? reportId : null;
+}
+
+function uniqueStrings(values: Array<string | null | undefined>): string[] {
+  return Array.from(new Set(values.filter((value): value is string => Boolean(value))));
 }
 
 function reportRecordId(): string {
@@ -190,6 +308,91 @@ export function createPostgresAppRepository(executor: QueryExecutor): AppReposit
         throw new Error('Failed to persist report');
       }
       return normalizeStoredReport(stored);
+    },
+
+    async findX402AuditRecords(input) {
+      const eventClauses = ["provider = 'x402'"];
+      const eventValues: unknown[] = [];
+      if (input.paymentEventId) {
+        eventValues.push(input.paymentEventId.toLowerCase());
+        eventClauses.push(`(lower(event_id) = $${eventValues.length} OR lower('x402:' || event_id) = $${eventValues.length})`);
+      }
+      if (input.transaction) {
+        eventValues.push(input.transaction.toLowerCase());
+        const txParam = eventValues.length;
+        eventValues.push(`%:${input.transaction.toLowerCase()}`);
+        const likeParam = eventValues.length;
+        eventClauses.push(`(lower(metadata->>'transaction') = $${txParam} OR lower(event_id) LIKE $${likeParam})`);
+      }
+      if (input.reportId) {
+        eventValues.push(input.reportId);
+        eventClauses.push(`metadata #>> '{paid_result,report_id}' = $${eventValues.length}`);
+      }
+
+      const paymentEventsResult = eventValues.length > 0
+        ? await executor.query(
+          `SELECT provider, event_id, event_type, status, metadata, created_at, updated_at, processed_at
+           FROM payment_events
+           WHERE ${eventClauses.join(' AND ')}
+           ORDER BY created_at DESC
+           LIMIT 20`,
+          eventValues,
+        )
+        : { rows: [] };
+      const paymentEvents = paymentEventsResult.rows.map(normalizeX402PaymentEventAudit);
+      const linkedReportIds = uniqueStrings([
+        input.reportId,
+        ...paymentEvents.map((event) => linkedReportIdFromPaymentMetadata(event.metadata)),
+      ]);
+
+      const reportsResult = linkedReportIds.length > 0
+        ? await executor.query(
+          `SELECT r.id, r.report_id, u.subject_id, r.topic, r.region, r.status, r.confidence,
+                  r.model, r.markdown, r.citations, r.source_payload, r.generated_at,
+                  r.created_at, r.updated_at
+           FROM reports r
+           JOIN users u ON u.id = r.user_id
+           WHERE r.report_id = ANY($1::text[])
+             AND r.source_payload->>'payment_provider' = 'x402'
+           ORDER BY r.created_at DESC
+           LIMIT 20`,
+          [linkedReportIds],
+        )
+        : { rows: [] };
+      const reports = reportsResult.rows.map(normalizeX402ReportAudit);
+
+      const externalRefs = uniqueStrings(paymentEvents.map((event) => `x402:${event.event_id}`));
+      const ledgerClauses: string[] = [];
+      const ledgerValues: unknown[] = [];
+      if (externalRefs.length > 0) {
+        ledgerValues.push(externalRefs);
+        ledgerClauses.push(`cl.external_ref = ANY($${ledgerValues.length}::text[])`);
+      }
+      if (input.transaction) {
+        ledgerValues.push(input.transaction.toLowerCase());
+        const txParam = ledgerValues.length;
+        ledgerValues.push(`%:${input.transaction.toLowerCase()}`);
+        const likeParam = ledgerValues.length;
+        ledgerClauses.push(`lower(cl.metadata->>'transaction') = $${txParam} OR lower(cl.external_ref) LIKE $${likeParam}`);
+      }
+      const creditLedgerResult = ledgerClauses.length > 0
+        ? await executor.query(
+          `SELECT cl.id, u.subject_id, cl.direction, cl.amount_usdc, cl.credits_delta,
+                  cl.reason, cl.external_ref, cl.metadata, cl.created_at
+           FROM credit_ledger cl
+           JOIN users u ON u.id = cl.user_id
+           WHERE (${ledgerClauses.join(' OR ')})
+           ORDER BY cl.created_at DESC
+           LIMIT 20`,
+          ledgerValues,
+        )
+        : { rows: [] };
+
+      return {
+        reports,
+        paymentEvents,
+        creditLedger: creditLedgerResult.rows.map(normalizeX402CreditLedgerAudit),
+      };
     },
 
     async claimPaymentEvent(provider, eventId, eventType, metadata = {}) {

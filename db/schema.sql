@@ -97,3 +97,10 @@ CREATE INDEX IF NOT EXISTS idx_reports_user_created_at
 
 CREATE INDEX IF NOT EXISTS idx_reports_report_id
   ON reports(report_id);
+
+CREATE INDEX IF NOT EXISTS idx_payment_events_provider_created_at
+  ON payment_events(provider, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_credit_ledger_external_ref
+  ON credit_ledger(external_ref)
+  WHERE external_ref IS NOT NULL;

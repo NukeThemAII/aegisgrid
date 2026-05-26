@@ -142,6 +142,7 @@ STRIPE_PRICE_PRO_YEARLY=  STRIPE_PRICE_REPORT_PACK=
 STRIPE_REPORT_PACK_CREDITS=10
 X402_ENABLED=false        X402_RECEIVING_ADDRESS=
 X402_FACILITATOR_URL=     X402_NETWORK=eip155:8453
+X402_REPORT_PRICE_USDC=1.00  X402_API_PRICE_USDC=0.05
 CDP_API_KEY_ID=           CDP_API_KEY_SECRET=
 
 # ── Optional enrichment API keys ─────────────────
@@ -164,13 +165,13 @@ X402_ENABLED=false
 
 > 💡 Current foundation routes are intentionally conservative:
 > `/api/auth/session`, `/api/platform/status`, `/api/reports`, `/api/x402/report`,
-> and `/api/comms` are wired with token auth where applicable, DB-backed
-> entitlement/report/payment-event checks, fail-closed premium/x402 gates,
-> sanitized readiness metadata, deterministic/local report generation,
-> official Stripe Checkout/Portal/Webhook foundations, and official x402
-> `withX402` exact-EVM pay-per-report settlement. Full OAuth, Redis
-> queues/shared cache, x402 enrichment/API routes, and external AI providers
-> remain planned follow-up work.
+> `/api/x402/enrich`, `/api/x402/audit`, and `/api/comms` are wired with
+> token auth where applicable, DB-backed entitlement/report/payment-event checks,
+> fail-closed premium/x402 gates, sanitized readiness metadata,
+> deterministic/local report and enrichment generation, official Stripe
+> Checkout/Portal/Webhook foundations, and official x402 `withX402` exact-EVM
+> pay-per-report/pay-per-enrichment settlement. Full OAuth, Redis queues/shared
+> cache, and external AI providers remain planned follow-up work.
 
 ---
 
@@ -207,7 +208,8 @@ Fail-closed behavior:
 AegisGrid uses official provider SDKs instead of hand-rolled payment protocols:
 
 - Stripe: official `stripe`/stripe-node SDK for Checkout, Billing Portal, and webhook signature verification.
-- x402: official v2 package set is used (`@x402/next`, `@x402/evm`, `@coinbase/x402`) for the pay-per-report API endpoint (`POST /api/x402/report`), including exact EVM scheme verification, settlement, deterministic report persistence before settlement, and post-settlement database audit log tracking.
+- x402: official v2 package set is used (`@x402/next`, `@x402/evm`, `@coinbase/x402`) for pay-per-report (`POST /api/x402/report`) and pay-per-enrichment (`POST /api/x402/enrich`) endpoints, including exact EVM scheme verification, settlement, deterministic source-bounded result persistence before settlement, and post-settlement database audit log tracking.
+- x402 operator lookup: `GET /api/x402/audit` requires an admin bearer token and `DATABASE_URL`; query by exactly one of `report_id`, `transaction`, or `payment_event_id` to retrieve x402 payment events, linked report records, and neutral credit-ledger audit rows.
 
 Current Stripe routes:
 
@@ -349,7 +351,8 @@ npm run build  # full Next.js production build
 - [x] Postgres/Redis readiness surfaced in Docker Compose and sanitized platform status (Redis clients/queues still planned)
 - [x] Postgres commercial persistence foundation (schema, `pg` client/repository, DB-backed entitlements, report persistence fail-closed)
 - [x] Official Stripe SDK foundation (authenticated checkout sessions, billing portal route, raw-body webhook signature verification, live/test mode guard, DB idempotency claims, subscription entitlement/report-pack credit fulfillment)
-- [x] Official x402 v2 packages used for protected pay-per-report route (`POST /api/x402/report`) with exact EVM scheme, settlement, and post-settlement database audit log tracking
+- [x] Official x402 v2 packages used for protected pay-per-report (`POST /api/x402/report`) and pay-per-enrichment (`POST /api/x402/enrich`) routes with exact EVM scheme, settlement, linked result metadata, and post-settlement database audit log tracking
+- [x] x402 operator audit lookup (`GET /api/x402/audit`) gated by admin auth for locating paid report/payment records by report ID, transaction hash, or payment event ID
 - [x] Comms registry foundation behind `FEATURE_COMMS` with embed/link-out metadata and tactical-feed exclusion
 - [x] AIS readiness metadata in maritime route without fake live vessel telemetry
 
