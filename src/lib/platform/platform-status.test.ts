@@ -76,7 +76,7 @@ describe('platform status', () => {
     expect(status.auth.token_auth_configured).toBe(true);
     expect(status.auth.oauth.github_configured).toBe(true);
     expect(status.database).toMatchObject({ status: 'configured', provider: 'postgresql', persistence: 'wired' });
-    expect(status.redis.status).toBe('redis_configured_memory_fallback');
+    expect(status.redis).toMatchObject({ status: 'redis_configured', cache: 'wired', queue: 'planned' });
     expect(status.ai).toMatchObject({ enabled: true, provider: 'openai', configured: true });
     expect(status.billing).toMatchObject({ premium_enabled: true, stripe_configured: true, x402_configured: true, entitlement_store: 'database' });
     expect(status.feeds.ais.status).toBe('configured_not_connected');

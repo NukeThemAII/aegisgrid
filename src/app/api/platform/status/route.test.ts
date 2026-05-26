@@ -25,7 +25,7 @@ describe('/api/platform/status', () => {
 
     expect(res.status).toBe(200);
     expect(body.database.status).toBe('configured');
-    expect(body.redis.status).toBe('redis_configured_memory_fallback');
+    expect(body.redis).toMatchObject({ status: 'redis_configured', cache: 'wired', queue: 'planned' });
     expect(serialized).not.toContain('pass');
     expect(serialized).not.toContain('redispass');
     expect(serialized).not.toContain('sk_secret');

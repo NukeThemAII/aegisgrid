@@ -1,8 +1,9 @@
+import { cacheStatus } from '@/lib/cache/cache-store';
 import { databaseProvider, isDatabaseConfigured } from '@/lib/db/postgres';
 
 type ServiceStatus = 'configured' | 'unconfigured';
 
-type RedisStatus = 'memory_fallback' | 'redis_configured_memory_fallback';
+type RedisStatus = 'memory_fallback' | 'redis_configured';
 
 type AisStatus = 'api_key_missing' | 'configured_not_connected';
 
@@ -24,7 +25,8 @@ export interface PlatformStatus {
   };
   redis: {
     status: RedisStatus;
-    queue: 'not_wired' | 'planned';
+    cache: 'memory' | 'wired';
+    queue: 'planned';
   };
   ai: {
     enabled: boolean;
@@ -93,10 +95,7 @@ export function getPlatformStatus(now = new Date().toISOString()): PlatformStatu
       provider: databaseProvider(process.env.DATABASE_URL),
       persistence: databaseConfigured ? 'wired' : 'planned',
     },
-    redis: {
-      status: configured(process.env.REDIS_URL) ? 'redis_configured_memory_fallback' : 'memory_fallback',
-      queue: configured(process.env.REDIS_URL) ? 'not_wired' : 'planned',
-    },
+    redis: cacheStatus(),
     ai: {
       enabled: aiEnabled,
       provider,

@@ -169,13 +169,15 @@ X402_ENABLED=false
 > token auth where applicable, DB-backed entitlement/report/payment-event checks,
 > fail-closed premium/x402 gates, sanitized readiness metadata,
 > deterministic/local report and enrichment generation, official Stripe
-> Checkout/Portal/Webhook foundations, and official x402 `withX402` exact-EVM
-> pay-per-report/pay-per-enrichment settlement. Full OAuth, Redis queues/shared
-> cache, and external AI providers remain planned follow-up work.
+> Checkout/Portal/Webhook foundations, optional Redis-backed shared cache
+> helper with in-memory fallback, and official x402 `withX402` exact-EVM
+> pay-per-report/pay-per-enrichment settlement. Full OAuth, Redis job queues,
+> background feed refresh workers, and external AI providers remain planned
+> follow-up work.
 
 ---
 
-## 🗄️ Database persistence
+## 🗄️ Persistence and shared cache
 
 The Postgres foundation is now wired for commercial state:
 
@@ -184,6 +186,7 @@ The Postgres foundation is now wired for commercial state:
 - persisted tables: `users`, `entitlements`, `credit_ledger`, `payment_events`, `reports`
 - report persistence seam: `src/lib/reports/report-store.ts`
 - premium checks: `src/lib/billing/guard.ts`
+- shared cache seam: `src/lib/cache/cache-store.ts` (`REDIS_URL` uses Redis via `ioredis`; unset env uses in-memory TTL fallback)
 
 Apply the schema locally:
 
@@ -348,7 +351,8 @@ npm run build  # full Next.js production build
 - [x] Scanner audit persistence + source health endpoint (`/api/scanner/health`)
 - [x] Scanner auth boundary + entitlement verification scaffold (token subject auth, DNS TXT ownership verification, admin allowlist CRUD, audit export)
 - [x] Platform auth/billing/report foundation (general token auth, fail-closed premium guard, `/api/auth/session`, `/api/platform/status`, `/api/reports` deterministic provider)
-- [x] Postgres/Redis readiness surfaced in Docker Compose and sanitized platform status (Redis clients/queues still planned)
+- [x] Postgres readiness surfaced in Docker Compose and sanitized platform status
+- [x] Redis shared cache seam (`src/lib/cache/cache-store.ts`) with optional `REDIS_URL`, `ioredis` backing, in-memory TTL fallback, and sanitized readiness metadata
 - [x] Postgres commercial persistence foundation (schema, `pg` client/repository, DB-backed entitlements, report persistence fail-closed)
 - [x] Official Stripe SDK foundation (authenticated checkout sessions, billing portal route, raw-body webhook signature verification, live/test mode guard, DB idempotency claims, subscription entitlement/report-pack credit fulfillment)
 - [x] Official x402 v2 packages used for protected pay-per-report (`POST /api/x402/report`) and pay-per-enrichment (`POST /api/x402/enrich`) routes with exact EVM scheme, settlement, linked result metadata, and post-settlement database audit log tracking
@@ -358,7 +362,7 @@ npm run build  # full Next.js production build
 
 ### Up next
 - [ ] OAuth layer (GitHub/Google Auth.js or equivalent)
-- [ ] Redis job queue and shared cache for background feed refresh
+- [ ] Redis job queue and background feed refresh workers
 - [ ] External AI provider integration for situational reports (OpenAI/Hermes with citations and prompt-injection controls)
 - [ ] Lawful radiosonde (balloons) source adapter
 - [ ] Radiation monitoring adapter (Safecast / EU networks)
