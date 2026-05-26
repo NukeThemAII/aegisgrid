@@ -6,6 +6,7 @@ afterEach(() => {
   delete process.env.AI_PROVIDER;
   delete process.env.OPENAI_API_KEY;
   delete process.env.HERMES_API_KEY;
+  delete process.env.HERMES_API_URL;
   delete process.env.AI_MODEL_REPORTS;
 });
 

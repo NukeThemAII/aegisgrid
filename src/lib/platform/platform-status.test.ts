@@ -14,6 +14,7 @@ function clearPlatformEnv() {
     'AI_PROVIDER',
     'OPENAI_API_KEY',
     'HERMES_API_KEY',
+    'HERMES_API_URL',
     'FEATURE_PREMIUM',
     'STRIPE_SECRET_KEY',
     'NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY',

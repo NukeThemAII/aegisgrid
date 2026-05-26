@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { generateDeterministicReport, getAiProviderStatus, parseReportRequest } from '@/lib/ai/report-generator';
+import { parseReportRequest } from '@/lib/ai/report-generator';
+import { createReportProvider } from '@/lib/ai/provider-factory';
 import { parseAppSubject } from '@/lib/auth/app-auth';
 import { verifyPremiumAccess } from '@/lib/billing/guard';
 import { persistReportRecord } from '@/lib/reports/report-store';
@@ -23,22 +24,14 @@ export async function POST(req: Request) {
     }, { status: access.status });
   }
 
-  const provider = getAiProviderStatus();
-  if (!provider.configured) {
+  const providerResult = createReportProvider();
+  if (!providerResult.ok) {
     return NextResponse.json({
-      error: 'No configured AI report provider is available.',
+      error: providerResult.error,
       code: 'AI_PROVIDER_UNCONFIGURED',
-      provider: provider.provider,
     }, { status: 503 });
   }
-
-  if (provider.provider !== 'deterministic') {
-    return NextResponse.json({
-      error: 'External AI providers are configured but not wired in this foundation slice.',
-      code: 'AI_PROVIDER_NOT_WIRED',
-      provider: provider.provider,
-    }, { status: 501 });
-  }
+  const provider = providerResult.provider;
 
   let input: unknown;
   try {
@@ -58,7 +51,15 @@ export async function POST(req: Request) {
     }, { status: 400 });
   }
 
-  const report = generateDeterministicReport(parsed.value);
+  const generateResult = await provider.generateReport(parsed.value);
+  if (!generateResult.ok) {
+    return NextResponse.json({
+      error: generateResult.error,
+      code: generateResult.code,
+    }, { status: 502 });
+  }
+
+  const report = generateResult.report;
   const persistence = await persistReportRecord(subject.subjectId ?? 'unknown', report, {
     sourcePayload: parsed.value,
   });

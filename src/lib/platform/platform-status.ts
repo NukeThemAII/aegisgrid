@@ -65,7 +65,7 @@ function aiProviderConfigured(provider: string): boolean {
     case 'openai':
       return configured(process.env.OPENAI_API_KEY);
     case 'hermes':
-      return configured(process.env.HERMES_API_KEY);
+      return configured(process.env.HERMES_API_KEY) && configured(process.env.HERMES_API_URL);
     default:
       return false;
   }

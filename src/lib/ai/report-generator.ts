@@ -224,7 +224,7 @@ export function getAiProviderStatus(): { enabled: boolean; provider: string; con
   const configured = enabled && (
     provider === 'deterministic'
       || (provider === 'openai' && Boolean(process.env.OPENAI_API_KEY?.trim()))
-      || (provider === 'hermes' && Boolean(process.env.HERMES_API_KEY?.trim()))
+      || (provider === 'hermes' && Boolean(process.env.HERMES_API_KEY?.trim()) && Boolean(process.env.HERMES_API_URL?.trim()))
   );
   return { enabled, provider, configured };
 }

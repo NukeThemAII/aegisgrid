@@ -7,6 +7,7 @@ function clearReportEnv() {
     'AI_PROVIDER',
     'OPENAI_API_KEY',
     'HERMES_API_KEY',
+    'HERMES_API_URL',
     'AUTH_USER_TOKENS',
     'AUTH_ADMIN_TOKEN',
     'AUTH_USER_ENTITLEMENTS',
@@ -29,6 +30,7 @@ function makeRequest(body: unknown, token?: string): Request {
 afterEach(() => {
   vi.restoreAllMocks();
   vi.doUnmock('@/lib/reports/report-store');
+  vi.doUnmock('@/lib/ai/provider-factory');
   clearReportEnv();
 });
 
@@ -124,5 +126,58 @@ describe('/api/reports', () => {
     expect(res.status).toBe(500);
     expect(body.code).toBe('REPORT_PERSISTENCE_FAILED');
     expect(JSON.stringify(body)).not.toContain('pass');
+  });
+
+  it('returns 502 when external provider reports a generation error', async () => {
+    vi.resetModules();
+    process.env.FEATURE_AI_REPORTS = 'true';
+    process.env.FEATURE_PREMIUM = 'true';
+    process.env.AI_PROVIDER = 'openai';
+    process.env.OPENAI_API_KEY = 'sk-test-fake';
+    process.env.AUTH_USER_TOKENS = 'alice:token';
+    process.env.AUTH_USER_ENTITLEMENTS = 'alice:ai_report';
+    // Mock the provider factory to return a provider that always fails
+    vi.doMock('@/lib/ai/provider-factory', () => ({
+      createReportProvider: vi.fn(() => ({
+        ok: true,
+        provider: {
+          name: 'openai',
+          generateReport: vi.fn(async () => ({
+            ok: false,
+            code: 'PROVIDER_ERROR',
+            error: 'OpenAI API returned status 429. Report generation failed.',
+          })),
+        },
+      })),
+    }));
+    const { POST } = await import('./route');
+
+    const res = await POST(makeRequest({
+      topic: 'Strait of Hormuz',
+      sources: [{ title: 'AIS', summary: 'Data.', confidence: 'low' }],
+    }, 'token'));
+    const body = await res.json();
+
+    expect(res.status).toBe(502);
+    expect(body.code).toBe('PROVIDER_ERROR');
+    // Ensure no secrets leak
+    expect(JSON.stringify(body)).not.toContain('sk-test-fake');
+  });
+
+  it('returns 503 when openai provider is requested but OPENAI_API_KEY is missing', async () => {
+    vi.resetModules();
+    process.env.FEATURE_AI_REPORTS = 'true';
+    process.env.FEATURE_PREMIUM = 'true';
+    process.env.AI_PROVIDER = 'openai';
+    delete process.env.OPENAI_API_KEY;
+    process.env.AUTH_USER_TOKENS = 'alice:token';
+    process.env.AUTH_USER_ENTITLEMENTS = 'alice:ai_report';
+    const { POST } = await import('./route');
+
+    const res = await POST(makeRequest({ topic: 'Test', sources: [] }, 'token'));
+    const body = await res.json();
+
+    expect(res.status).toBe(503);
+    expect(body.code).toBe('AI_PROVIDER_UNCONFIGURED');
   });
 });

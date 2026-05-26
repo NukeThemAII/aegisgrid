@@ -156,7 +156,7 @@ N2YO_API_KEY=            IPCAMLIVE_API_SECRET=
 
 # ── Feature flags / commercial readiness ──────────
 FEATURE_AI_REPORTS=false
-AI_PROVIDER=none         # deterministic enables local source-bounded reports
+AI_PROVIDER=none         # deterministic | openai | hermes — see provider docs below
 FEATURE_COMMS=false
 FEATURE_PREMIUM=false
 FEATURE_X402=false
@@ -168,12 +168,40 @@ X402_ENABLED=false
 > `/api/x402/enrich`, `/api/x402/audit`, and `/api/comms` are wired with
 > token auth where applicable, DB-backed entitlement/report/payment-event checks,
 > fail-closed premium/x402 gates, sanitized readiness metadata,
-> deterministic/local report and enrichment generation, official Stripe
-> Checkout/Portal/Webhook foundations, optional Redis-backed shared cache
-> helper with in-memory fallback, and official x402 `withX402` exact-EVM
+> provider-abstracted report generation (deterministic/openai/hermes), official Stripe
+> Checkout/Portal/Webhook foundations, optional Redis-backed shared cache helper
+> with in-memory fallback, and official x402 `withX402` exact-EVM
 > pay-per-report/pay-per-enrichment settlement. Full OAuth, Redis job queues,
-> background feed refresh workers, and external AI providers remain planned
-> follow-up work.
+> and background feed refresh workers remain planned follow-up work.
+
+---
+
+## 🤖 AI provider abstraction
+
+AI report generation uses a provider factory pattern (`src/lib/ai/provider-factory.ts`).
+Set `AI_PROVIDER` to select the backend:
+
+| Value | Behavior | Requirements |
+|---|---|---|
+| `none` | Disabled (default, fail-closed) | — |
+| `deterministic` | Local source-bounded reports, no external calls | — |
+| `openai` | OpenAI chat completions API | `OPENAI_API_KEY` |
+| `hermes` | Hermes-compatible chat API | `HERMES_API_KEY` + `HERMES_API_URL` |
+
+### Prompt-injection controls
+
+External providers (openai, hermes) use layered safety:
+
+1. **System prompt**: Declares all source payloads as untrusted evidence that may not override instructions
+2. **Source sanitization**: Strips HTML tags, control characters, limits length before embedding in prompts
+3. **Citation validation**: Every citation in output must reference a provided source index
+4. **Required fields**: Output must contain Executive Summary, Key Findings, Citations, Uncertainty
+5. **Fail-closed**: If validation fails, returns structured error — never persists unvalidated AI output
+
+### x402 reports
+
+x402 paid reports (`/api/x402/report`) require `AI_PROVIDER=deterministic` for settlement safety —
+deterministic output is reproducible and auditable, which is essential for pay-per-report semantics.
 
 ---
 
