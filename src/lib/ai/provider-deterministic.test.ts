@@ -49,4 +49,27 @@ describe('DeterministicReportProvider', () => {
       expect(result.report.model).toBe('aegisgrid-deterministic-report-v1');
     }
   });
+
+  it('generates report successfully with undefined options', async () => {
+    const provider = new DeterministicReportProvider();
+    const result = await provider.generateReport({ topic: 'Test Options', sources: [] });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.report.report_id).toMatch(/^report_/);
+      expect(typeof result.report.generated_at).toBe('string');
+      expect(result.report.region).toBeNull();
+    }
+  });
+
+  it('generates report successfully with empty sources and missing region', async () => {
+    const provider = new DeterministicReportProvider();
+    const result = await provider.generateReport({ topic: 'Sparse Report', sources: [] });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.report.confidence).toBe('low');
+      expect(result.report.markdown).toContain('Region: Not Recorded');
+      expect(result.report.markdown).toContain('Not Recorded: balloons/radiation/AIS/comms source payloads absent.');
+      expect(result.report.citations).toHaveLength(0);
+    }
+  });
 });

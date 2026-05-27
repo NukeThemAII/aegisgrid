@@ -92,4 +92,59 @@ describe('shared cache store', () => {
 
     await expect(store.getJson('bad')).resolves.toBeNull();
   });
+
+  it('sanitizes TTL edge cases properly', async () => {
+    vi.resetModules();
+    const redis = new FakeRedisClient();
+    const { createCacheStore } = await import('./cache-store');
+    const store = createCacheStore({ redisUrl: 'redis://localhost:6379/0', redisClient: redis });
+
+    // 0: should sanitize to 1
+    await store.setJson('k0', 'v', 0);
+    // negative: should sanitize to 1
+    await store.setJson('k1', 'v', -10);
+    // NaN: should sanitize to 1
+    await store.setJson('k2', 'v', NaN);
+    // Infinity: should sanitize to 1
+    await store.setJson('k3', 'v', Infinity);
+    // very large: should sanitize to 86_400 (max)
+    await store.setJson('k4', 'v', 999_999);
+
+    expect(redis.calls.filter(c => c.command === 'set')).toEqual([
+      { command: 'set', args: ['k0', JSON.stringify('v'), 'EX', 1] },
+      { command: 'set', args: ['k1', JSON.stringify('v'), 'EX', 1] },
+      { command: 'set', args: ['k2', JSON.stringify('v'), 'EX', 1] },
+      { command: 'set', args: ['k3', JSON.stringify('v'), 'EX', 1] },
+      { command: 'set', args: ['k4', JSON.stringify('v'), 'EX', 86_400] },
+    ]);
+  });
+
+  it('propagates Redis command failures', async () => {
+    vi.resetModules();
+    const redis = new FakeRedisClient();
+    // Mock get to reject
+    redis.get = vi.fn().mockRejectedValue(new Error('Redis connection lost'));
+    const { createCacheStore } = await import('./cache-store');
+    const store = createCacheStore({ redisUrl: 'redis://localhost:6379/0', redisClient: redis });
+
+    await expect(store.getJson('test')).rejects.toThrow('Redis connection lost');
+  });
+
+  it('handles JSON.stringify edge cases', async () => {
+    vi.resetModules();
+    const { createCacheStore } = await import('./cache-store');
+    const store = createCacheStore({ now: () => 1_000 });
+
+    // 1. undefined: should serialize to undefined and getJson should return null
+    await store.setJson('k_undef', undefined, 10);
+    await expect(store.getJson('k_undef')).resolves.toBeNull();
+
+    // 2. circular structure: should throw TypeError
+    const circular: any = {};
+    circular.self = circular;
+    await expect(store.setJson('k_circ', circular, 10)).rejects.toThrow(TypeError);
+
+    // 3. non-serializable BigInt: should throw TypeError
+    await expect(store.setJson('k_bigint', BigInt(42), 10)).rejects.toThrow(TypeError);
+  });
 });

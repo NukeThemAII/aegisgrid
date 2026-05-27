@@ -75,4 +75,34 @@ describe('AI report generator', () => {
 
     expect(getAiProviderStatus()).toMatchObject({ enabled: true, provider: 'none', configured: false });
   });
+
+  it('reports provider readiness correctly for hermes with API key and URL', async () => {
+    vi.resetModules();
+    process.env.FEATURE_AI_REPORTS = 'true';
+    process.env.AI_PROVIDER = 'hermes';
+    process.env.HERMES_API_KEY = 'hermes-key-123';
+    process.env.HERMES_API_URL = 'https://hermes.example.com/v1';
+    const { getAiProviderStatus } = await import('./report-generator');
+
+    expect(getAiProviderStatus()).toEqual({
+      enabled: true,
+      provider: 'hermes',
+      configured: true,
+    });
+  });
+
+  it('fails provider readiness for hermes when API key or URL is missing', async () => {
+    vi.resetModules();
+    process.env.FEATURE_AI_REPORTS = 'true';
+    process.env.AI_PROVIDER = 'hermes';
+    process.env.HERMES_API_KEY = 'hermes-key-123';
+    // HERMES_API_URL is missing
+    const { getAiProviderStatus } = await import('./report-generator');
+
+    expect(getAiProviderStatus()).toEqual({
+      enabled: true,
+      provider: 'hermes',
+      configured: false,
+    });
+  });
 });

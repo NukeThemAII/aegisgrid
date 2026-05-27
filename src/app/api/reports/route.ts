@@ -1,13 +1,26 @@
 import { NextResponse } from 'next/server';
-import { parseReportRequest } from '@/lib/ai/report-generator';
+import { parseReportRequest, type GeneratedReport } from '@/lib/ai/report-generator';
 import { createReportProvider } from '@/lib/ai/provider-factory';
 import { parseAppSubject } from '@/lib/auth/app-auth';
 import { verifyPremiumAccess } from '@/lib/billing/guard';
-import { persistReportRecord } from '@/lib/reports/report-store';
+import { persistReportRecord, type ReportPersistenceResult } from '@/lib/reports/report-store';
 
 export const runtime = 'nodejs';
 
-export async function POST(req: Request) {
+export interface ReportApiSuccessResponse {
+  ok: true;
+  report: GeneratedReport;
+  persistence: ReportPersistenceResult;
+}
+
+export interface ReportApiErrorResponse {
+  error: string;
+  code: string;
+}
+
+export type ReportApiResponse = ReportApiSuccessResponse | ReportApiErrorResponse;
+
+export async function POST(req: Request): Promise<NextResponse<ReportApiResponse>> {
   if (process.env.FEATURE_AI_REPORTS !== 'true') {
     return NextResponse.json({
       error: 'AI reports are disabled on this deployment.',

@@ -21,6 +21,21 @@ export interface X402PaidRouteConfig {
   cdpApiKeySecret?: string;
 }
 
+export interface X402EnrichmentResult {
+  kind: 'enrichment';
+  enrichment_id: string | null;
+  report_id: string | null;
+  db_report_id: string | null;
+}
+
+export interface X402ReportResult {
+  kind: 'report';
+  report_id: string | null;
+  db_report_id: string | null;
+}
+
+export type X402PaidResult = X402EnrichmentResult | X402ReportResult;
+
 export type X402ConfigResult =
   | { ok: true; value: X402PaidRouteConfig }
   | { ok: false; code: string; error: string };
@@ -165,7 +180,7 @@ function parseSettlementResponseBody(context: SettleResultContext): unknown {
   }
 }
 
-export function extractPaidResultFromSettlement(context: SettleResultContext): Record<string, unknown> | null {
+export function extractPaidResultFromSettlement(context: SettleResultContext): X402PaidResult | null {
   const body = parseSettlementResponseBody(context);
   if (!isRecord(body) || body.ok !== true) return null;
 

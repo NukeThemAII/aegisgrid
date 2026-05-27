@@ -290,7 +290,7 @@ describe('geolocAdapter', () => {
 
     expect(result.is_ip).toBe(false);
     expect(result.status).toBe('ok');
-    const results = result.results as Array<Record<string, unknown>>;
+    const results = result.results;
     expect(results).toHaveLength(1);
     expect(results[0].country).toBe('United States');
     expect(results[0].city).toBe('Los Angeles');
@@ -312,7 +312,7 @@ describe('geolocAdapter', () => {
     const result = await geolocAdapter('1.2.3.4');
 
     expect(result.is_ip).toBe(true);
-    const results = result.results as Array<Record<string, unknown>>;
+    const results = result.results;
     expect(results).toHaveLength(1);
     expect(results[0].status).toBe('error');
     expect(results[0].error).toBe('api down');
@@ -327,7 +327,7 @@ describe('geolocAdapter', () => {
     const result = await geolocAdapter('192.168.1.1');
 
     expect(result.status).toBe('failed');
-    const results = result.results as Array<Record<string, unknown>>;
+    const results = result.results;
     expect(results[0].status).toBe('failed');
     expect(results[0].error).toBe('private range');
   });

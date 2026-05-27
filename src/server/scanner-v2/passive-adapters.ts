@@ -14,6 +14,103 @@
 import { lookup, reverse } from 'node:dns/promises';
 import type { ScanAdapter, ScanType } from './scanner-service';
 
+export type RdnsSuccessResult = {
+  target: string;
+  is_ip: boolean;
+  forward_ips: string[];
+  reverse_records: Array<{ ip: string; hostnames: string[]; error?: string }>;
+  status: 'ok';
+  source: 'node:dns';
+  fetched_at: string;
+  [key: string]: unknown;
+}
+
+export type RdnsErrorResult = {
+  target: string;
+  is_ip: boolean;
+  forward_ips: string[];
+  reverse_records: Array<{ ip: string; hostnames: string[]; error?: string }>;
+  status: 'lookup_failed';
+  error: string;
+  source: 'node:dns';
+  fetched_at: string;
+  [key: string]: unknown;
+}
+
+export type RdnsResult = RdnsSuccessResult | RdnsErrorResult;
+
+export type RdapResult = {
+  target: string;
+  endpoint_type: 'ip' | 'domain';
+  status: 'ok' | 'not_found' | 'unexpected_response' | 'error';
+  source: 'rdap.org';
+  source_url: string;
+  fetched_at: string;
+  name?: string;
+  handle?: string;
+  type?: string;
+  rdap_status?: string[];
+  events?: Array<{ action?: string; date?: string }>;
+  port43?: string;
+  error?: string;
+  [key: string]: unknown;
+}
+
+export type CtSubdomainsResult = {
+  target: string;
+  status: 'ok' | 'skipped' | 'not_found' | 'unexpected_response' | 'error';
+  subdomains: string[];
+  source: 'crt.sh';
+  source_url?: string;
+  fetched_at: string;
+  reason?: string;
+  count?: number;
+  error?: string;
+  [key: string]: unknown;
+}
+
+export type GeolocEntry = {
+  ip: string;
+  country?: string;
+  region?: string;
+  city?: string;
+  lat?: number;
+  lon?: number;
+  isp?: string;
+  org?: string;
+  as_number?: string;
+  status: string;
+  error?: string;
+  [key: string]: unknown;
+}
+
+export type GeolocResult = {
+  target: string;
+  is_ip: boolean;
+  status: 'ok' | 'failed' | 'lookup_failed' | 'no_addresses';
+  results: GeolocEntry[];
+  source: 'ip-api.com';
+  source_url?: string;
+  fetched_at: string;
+  error?: string;
+  [key: string]: unknown;
+}
+
+export type VulnResult = {
+  target: string;
+  status: 'ok' | 'not_applicable' | 'not_found' | 'unexpected_response' | 'error' | 'cpe_noted';
+  reason?: string;
+  vulnerabilities?: [];
+  source: 'cveawg.mitre.org';
+  fetched_at: string;
+  source_url?: string;
+  cve_id?: string;
+  state?: string;
+  descriptions?: Array<{ lang?: string; value?: string }>;
+  error?: string;
+  [key: string]: unknown;
+}
+
 // ────────────────────────────────────────────────────────────────────────────
 // Shared constants
 // ────────────────────────────────────────────────────────────────────────────
@@ -147,17 +244,9 @@ async function boundedFetchJson(
 // 1. RDNS adapter
 // ────────────────────────────────────────────────────────────────────────────
 
-export interface RdnsResult {
-  target: string;
-  is_ip: boolean;
-  forward_ips: string[];
-  reverse_records: Array<{ ip: string; hostnames: string[]; error?: string }>;
-  status: string;
-  source: string;
-  fetched_at: string;
-}
 
-export async function rdnsAdapter(target: string): Promise<Record<string, unknown>> {
+
+export async function rdnsAdapter(target: string): Promise<RdnsResult> {
   const fetchedAt = new Date().toISOString();
   const isIp = isIpLiteral(target);
 
@@ -226,12 +315,12 @@ export async function rdnsAdapter(target: string): Promise<Record<string, unknow
 const RDAP_DOMAIN_BASE = 'https://rdap.org/domain/';
 const RDAP_IP_BASE = 'https://rdap.org/ip/';
 
-export async function rdapAdapter(target: string): Promise<Record<string, unknown>> {
+export async function rdapAdapter(target: string): Promise<RdapResult> {
   const fetchedAt = new Date().toISOString();
   const isIp = isIpLiteral(target);
   const url = isIp ? `${RDAP_IP_BASE}${encodeURIComponent(target)}` : `${RDAP_DOMAIN_BASE}${encodeURIComponent(target)}`;
 
-  let status = 'ok';
+  let status: RdapResult['status'] = 'ok';
   let data: Record<string, unknown> = {};
 
   try {
@@ -278,7 +367,7 @@ export async function rdapAdapter(target: string): Promise<Record<string, unknow
 /** Fixed CT log source. */
 const CRT_SH_BASE = 'https://crt.sh/';
 
-export async function ctSubdomainsAdapter(target: string): Promise<Record<string, unknown>> {
+export async function ctSubdomainsAdapter(target: string): Promise<CtSubdomainsResult> {
   const fetchedAt = new Date().toISOString();
 
   // Only query for domain names, not IPs.
@@ -363,21 +452,9 @@ export async function ctSubdomainsAdapter(target: string): Promise<Record<string
 /** Free geolocation endpoint (upstream free tier is HTTP-only, not HTTPS). */
 const GEOLOC_BASE = 'http://ip-api.com/json/';
 
-interface GeolocEntry {
-  ip: string;
-  country?: string;
-  region?: string;
-  city?: string;
-  lat?: number;
-  lon?: number;
-  isp?: string;
-  org?: string;
-  as_number?: string;
-  status: string;
-  error?: string;
-}
 
-export async function geolocAdapter(target: string): Promise<Record<string, unknown>> {
+
+export async function geolocAdapter(target: string): Promise<GeolocResult> {
   const fetchedAt = new Date().toISOString();
   const isIp = isIpLiteral(target);
 
@@ -392,19 +469,23 @@ export async function geolocAdapter(target: string): Promise<Record<string, unkn
     } catch (err) {
       return {
         target,
+        is_ip: isIp,
         status: 'lookup_failed',
         error: err instanceof Error ? err.message : 'hostname resolution failed',
         results: [],
         source: 'ip-api.com',
+        source_url: `${GEOLOC_BASE}<ip>`,
         fetched_at: fetchedAt,
       };
     }
     if (ips.length === 0) {
       return {
         target,
+        is_ip: isIp,
         status: 'no_addresses',
         results: [],
         source: 'ip-api.com',
+        source_url: `${GEOLOC_BASE}<ip>`,
         fetched_at: fetchedAt,
       };
     }
@@ -477,7 +558,7 @@ function isCveOrCpe(target: string): boolean {
   return isCveId(target) || isCpe(target);
 }
 
-export async function vulnAdapter(target: string): Promise<Record<string, unknown>> {
+export async function vulnAdapter(target: string): Promise<VulnResult> {
   const fetchedAt = new Date().toISOString();
 
   // Only handle CVE/CPE-like target strings passively.
@@ -535,6 +616,7 @@ export async function vulnAdapter(target: string): Promise<Record<string, unknow
           cve_id: stringField(cveMetadata, 'cveId') ?? upper,
           state: stringField(cveMetadata, 'state'),
           descriptions,
+          vulnerabilities: [],
           source: 'cveawg.mitre.org',
           source_url: url,
           fetched_at: fetchedAt,

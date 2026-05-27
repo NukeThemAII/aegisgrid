@@ -3,11 +3,11 @@ import Redis from 'ioredis';
 export type CacheProvider = 'memory' | 'redis';
 
 export interface RedisCacheClient {
-  connect?(): Promise<unknown>;
+  connect?(): Promise<void>;
   get(key: string): Promise<string | null>;
-  set(key: string, value: string, mode: 'EX', ttlSeconds: number): Promise<unknown>;
-  del(key: string): Promise<unknown>;
-  quit?(): Promise<unknown>;
+  set(key: string, value: string, mode: 'EX', ttlSeconds: number): Promise<'OK' | string | null>;
+  del(key: string): Promise<number>;
+  quit?(): Promise<'OK' | string | void>;
   disconnect?(): void;
 }
 
