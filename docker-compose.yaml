@@ -1,0 +1,70 @@
+# AegisGrid V2 — Docker Compose (VPS)
+#
+# Usage:
+#   1. Copy .env.example → .env.local and fill secrets.
+#   2. docker compose up -d
+#   3. docker compose logs -f aegisgrid
+#
+# Exposes:
+#   aegisgrid → http://127.0.0.1:3000 ( Next.js production )
+#   postgres  → internal-only (db:5432)
+#   redis     → internal-only (cache:6379)
+#
+# The Next.js app does NOT bind to 0.0.0.0 externally.
+# Front it with nginx/Caddy on the host for TLS + port 80→3000.
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-aegisgrid}
+      POSTGRES_USER: ${POSTGRES_USER:-aegisgrid}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me-local-only}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-aegisgrid} -d ${POSTGRES_DB:-aegisgrid}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  cache:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--save", "", "--appendonly", "no", "--maxmemory", "64mb", "--maxmemory-policy", "allkeys-lru"]
+    ports:
+      - "127.0.0.1:6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  aegisgrid:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      cache:
+        condition: service_healthy
+    env_file:
+      - .env.local
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql://aegisgrid:change-me-local-only@db:5432/aegisgrid}
+      REDIS_URL: ${REDIS_URL:-redis://cache:6379/0}
+    ports:
+      - "127.0.0.1:3000:3000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  pgdata:

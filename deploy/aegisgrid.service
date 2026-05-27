@@ -1,0 +1,39 @@
+# AegisGrid systemd unit (no Docker)
+#
+# Place in /etc/systemd/system/aegisgrid.service
+# Enable:  systemctl enable --now aegisgrid
+# Status:  systemctl status aegisgrid
+# Logs:    journalctl -u aegisgrid -f
+#
+# Prereqs:
+#   - Node 20 installed
+#   - App cloned to /home/xaos/aegisgrid
+#   - `npm install` and `npm run build` already run
+#   - .env.local present in app dir
+
+[Unit]
+Description=AegisGrid V2 — Situational Intelligence Grid
+After=network.target postgresql.service redis-server.service
+Wants=postgresql.service redis-server.service
+
+[Service]
+Type=simple
+User=aegisgrid
+Group=aegisgrid
+WorkingDirectory=/home/xaos/aegisgrid
+EnvironmentFile=/home/xaos/aegisgrid/.env.local
+ExecStart=/usr/bin/node .next/standalone/server.js
+Restart=on-failure
+RestartSec=5
+Environment=PORT=3000
+Environment=NODE_ENV=production
+
+# Hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/xaos/aegisgrid/.data /home/xaos/aegisgrid/.next
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

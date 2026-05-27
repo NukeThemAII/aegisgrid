@@ -99,6 +99,48 @@ OpenSky, OTX, Shodan, etc.) are documented in `.env.example` and
 
 ---
 
+## 🏗️ Deploying on a VPS
+
+### Option A — systemd (simplest, no Docker)
+
+```bash
+# On the VPS:
+sudo useradd -r -s /bin/false aegisgrid
+sudo -u aegisgrid git clone https://github.com/NukeThemAII/aegisgrid.git /home/xaos/aegisgrid
+cd /home/xaos/aegisgrid
+npm install
+cp .env.example .env.local   # edit secrets
+npm run build
+
+# Install systemd unit:
+sudo cp deploy/aegisgrid.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now aegisgrid
+```
+
+### Option B — Docker Compose
+
+```bash
+docker compose up -d
+docker compose logs -f aegisgrid
+```
+
+### Reverse proxy + TLS
+
+```bash
+sudo apt install nginx certbot python3-certbot-nginx
+sudo cp deploy/nginx-aegisgrid.conf /etc/nginx/sites-available/aegisgrid
+sudo ln -s /etc/nginx/sites-available/aegisgrid /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl reload nginx
+
+# Get TLS cert (replace domain):
+sudo certbot --nginx -d your-domain.example
+```
+
+See `deploy/README.md` for full VPS setup walkthrough.
+
+---
+
 ## 🔑 Environment setup
 
 Copy `.env.example` → `.env.local`. Key groups:
@@ -387,11 +429,12 @@ npm run build  # full Next.js production build
 - [x] x402 operator audit lookup (`GET /api/x402/audit`) gated by admin auth for locating paid report/payment records by report ID, transaction hash, or payment event ID
 - [x] Comms registry foundation behind `FEATURE_COMMS` with embed/link-out metadata and tactical-feed exclusion
 - [x] AIS readiness metadata in maritime route without fake live vessel telemetry
+- [x] External AI report provider abstraction (deterministic/OpenAI/Hermes) with prompt-injection controls, citation validation, fail-closed response parsing, and sanitized output
+- [x] Deployment scaffolding: Docker Compose, systemd unit, nginx reverse proxy config
 
 ### Up next
 - [ ] OAuth layer (GitHub/Google Auth.js or equivalent)
 - [ ] Redis job queue and background feed refresh workers
-- [ ] External AI provider integration for situational reports (OpenAI/Hermes with citations and prompt-injection controls)
 - [ ] Lawful radiosonde (balloons) source adapter
 - [ ] Radiation monitoring adapter (Safecast / EU networks)
 - [ ] Expanded AIS maritime tracking
