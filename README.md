@@ -439,6 +439,8 @@ npm run build  # full Next.js production build
 - [x] SSRF host-pinning (DNS rebinding mitigation via undici Agent socket-level IP pinning)
 - [x] Feed route per-route rate limiting (17 routes with 429/Retry-After, 20 preset configs)
 
+- [x] Premium frontend panel (Stripe checkout/portal, x402 pay-per-use info, AI reports UI)
+
 ### Up next
 - [ ] Scanner response sanitization (response field allowlisting for proxied scanner backend)
 - [ ] Redis job queue and background feed refresh workers

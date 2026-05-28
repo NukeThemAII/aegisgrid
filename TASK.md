@@ -7,15 +7,14 @@
 
 ## HIGH — Security & Production Readiness
 
-### 1. [x] Feed route per-route rate limiting
-**Why:** MEDIUM gap from LOG.md. Feed routes (earthquakes, fires, news, flights,
-satellites, etc.) currently have no per-endpoint rate limits — only the shared
-proxy-level limiter. External APIs (USGS, NASA FIRMS, OpenSky) could throttle
-or bill us.
-**Scope:** Add `isRateLimited` calls to ~15 feed routes with route-specific
-window/limit config in a shared lib. Tests per route.
-**Estimate:** ~2h.
-**Done:** commit `b42beff` — 17 routes rate-limited, 16 new tests, TASK.md created.
+### 1. [x] Premium frontend panel (Stripe + x402 + AI Reports UI)
+**Why:** Backend has full billing/payment infrastructure but zero frontend UI.
+Users can't see or access premium features.
+**Scope:** Create PremiumPanel component showing auth status, Pro subscription
+(Stripe checkout/portal), AI report generation, x402 pay-per-use info.
+Wire into desktop sidebar.
+**Estimate:** ~1.5h.
+**Done:** commit `(pending)` — PremiumPanel.tsx created and wired into page.tsx.
 
 ### 2. [ ] Scanner response sanitization
 **Why:** MEDIUM gap. Scanner proxy responses from external backend pass through

@@ -4,6 +4,28 @@
 
 ---
 
+## 2026-05-28 (session 12) — Premium Frontend Panel (Stripe + x402 + AI Reports)
+
+### Task: Surface billing/payment infrastructure in the dashboard UI
+
+- **Created `PremiumPanel.tsx`**: Client component showing auth status, entitlements,
+  Pro subscription (Stripe checkout/portal integration), AI situational briefing
+  generation, and x402 pay-per-use info. Glass-panel styled to match existing UI.
+- **Wired into page.tsx**: Added to the desktop right sidebar between SearchBar/
+  SharePanel row and OsintPanel.
+- **Features**: Session polling via `/api/auth/session`, Stripe checkout redirect,
+  Stripe billing portal, AI report generation with markdown blob download,
+  entitlement badge display, error toast handling, loading/error states.
+- **CSP fix carried forward**: `worker-src 'self' blob:` added to fix MapLibre globe.
+
+**Quality gates:** lint ✅ | typecheck ✅ | build ✅ | 585 tests / 56 files ✅
+
+### Gaps closed
+- ~~No premium/paid UI on frontend~~ → **PremiumPanel with Stripe + x402 + AI reports**
+- ~~MapLibre globe not rendering~~ → **CSP worker-src fix deployed**
+
+---
+
 ## 2026-05-28 (session 11) — Feed Route Per-Route Rate Limiting
 
 ### Task: Add rate limiting to all external-data feed routes
