@@ -15,7 +15,7 @@ or bill us.
 **Scope:** Add `isRateLimited` calls to ~15 feed routes with route-specific
 window/limit config in a shared lib. Tests per route.
 **Estimate:** ~2h.
-**Done:** commit `(pending)` — 17 routes rate-limited, 16 new tests, TASK.md created.
+**Done:** commit `b42beff` — 17 routes rate-limited, 16 new tests, TASK.md created.
 
 ### 2. [ ] Scanner response sanitization
 **Why:** MEDIUM gap. Scanner proxy responses from external backend pass through
