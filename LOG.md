@@ -4,6 +4,28 @@
 
 ---
 
+## 2026-05-28 (session 2) — ssrf-guard Test Coverage
+
+### Task: ssrf-guard.test.ts (55 tests added)
+
+| Group | Tests | Coverage |
+|-------|-------|----------|
+| `parseIPv4` | 9 | Canonical forms, octal/hex/decimal bypass attempts, IPv6 rejection |
+| `validateHost — IPv4` | 17 | All 14 RFC blocked ranges, boundary cases, canonical form enforcement |
+| `validateHost — IPv6` | 9 | Loopback, unspecified, mapped, unique-local, link-local, doc, multicast, bracketed |
+| `validateHost — hostnames` | 8 | localhost, docker.internal, .local, .internal, syntax validation, DNS resolution |
+| `isRateLimited` | 6 | Window behavior, reset, per-IP tracking, custom windows |
+| `getClientIp` | 6 | x-forwarded-for, x-real-ip, fallbacks, whitespace trimming |
+
+**Quality gates:** lint ✅ | typecheck ✅ | 472 tests / 45 files ✅ | build ✅
+
+### Gaps closed
+- ~~No tests for ssrf-guard.ts~~ → **55 tests covering all exported functions**
+- Test count: 417 → **472** (+55)
+- Test files: 44 → **45** (+1)
+
+---
+
 ## 2026-05-28 — Codebase Audit + Security Hardening Pass
 
 ### Audit Score: **8.5 / 10**
