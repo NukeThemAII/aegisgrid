@@ -19,14 +19,10 @@
 
 ## HIGH — Remaining
 
-### Balloons placeholder
-**Why:** Last `source_unavailable` route. No free radiosonde JSON API exists
-(NOAA upper-air data is HTML/CSV, radiosonde tracking is niche).
-**Action:** Document as intentionally placeholder with rationale. Remove layer toggle
-from UI until a lawful source is found.
-**Estimate:** ~0.5h.
+### [x] Balloons placeholder
+**Done:** commit `(pending)` — documented rationale, permanent placeholder, no free API exists.
 
-### Redis job queue + background feed workers
+### [ ] Redis job queue + background feed workers
 **Why:** Feeds refresh on-demand per request. Background workers would cache feeds,
 reduce upstream API load, and improve response times.
 **Requires:** Redis (REDIS_URL), BullMQ setup.
