@@ -31,12 +31,13 @@ inject unexpected fields into the public API response.
 **Estimate:** ~1h.
 **Done:** commit `b8852fe` — sanitizeScannerResponse with top-level allowlist, depth enforcement, 5 tests.
 
-### 3. [ ] CSRF protection for state-changing routes
+### 3. [x] CSRF protection for state-changing routes
 **Why:** MEDIUM gap. Routes like `/api/billing/checkout`, `/api/billing/portal`,
 `/api/reports`, `/api/scanner/verification` are POST endpoints without CSRF
 tokens. Current mitigations: CORS preflight (JSON content-type), auth tokens.
 **Scope:** Add origin/referer checking middleware or CSRF token pattern. Tests.
 **Estimate:** ~2h.
+**Done:** commit `99837b8` — proxy-level CSRF validation, 17 tests, webhook exempt.
 
 ### 4. [ ] Balloons placeholder — source adapter or layer removal
 **Why:** Last remaining `source_unavailable` route. Lawful free radiosonde
