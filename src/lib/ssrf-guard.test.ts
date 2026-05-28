@@ -1,5 +1,13 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { parseIPv4, validateHost, isRateLimited, getClientIp } from './ssrf-guard';
+import {
+  parseIPv4,
+  validateHost,
+  isRateLimited,
+  getClientIp,
+  createPinnedDispatcher,
+  safeFetch,
+} from './ssrf-guard';
+import { Agent } from 'undici';
 
 // ---------------------------------------------------------------------------
 // parseIPv4
@@ -377,5 +385,107 @@ describe('getClientIp', () => {
   it('trims whitespace from x-forwarded-for entries', () => {
     const req = makeRequest({ 'x-forwarded-for': '  1.2.3.4  , 5.6.7.8' });
     expect(getClientIp(req)).toBe('1.2.3.4');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// createPinnedDispatcher
+// ---------------------------------------------------------------------------
+
+describe('createPinnedDispatcher', () => {
+  it('returns an undici Agent for IPv4 addresses', () => {
+    const dispatcher = createPinnedDispatcher('93.184.216.34', 443, 'example.com');
+    expect(dispatcher).toBeInstanceOf(Agent);
+  });
+
+  it('returns an undici Agent for IPv6 addresses (bracketed)', () => {
+    const dispatcher = createPinnedDispatcher('2001:4860:4860::8888', 443, 'dns.google');
+    expect(dispatcher).toBeInstanceOf(Agent);
+  });
+
+  it('creates a dispatcher without servername (for plain HTTP)', () => {
+    const dispatcher = createPinnedDispatcher('1.2.3.4', 80);
+    expect(dispatcher).toBeInstanceOf(Agent);
+  });
+
+  it('creates distinct Agent instances for different IPs', () => {
+    const a = createPinnedDispatcher('1.1.1.1', 443);
+    const b = createPinnedDispatcher('8.8.8.8', 443);
+    expect(a).not.toBe(b);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// safeFetch — host-pinning behaviour
+// ---------------------------------------------------------------------------
+
+describe('safeFetch — host-pinning', () => {
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn());
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('passes a pinned dispatcher to fetch() for hostname URLs', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce({
+      status: 200,
+      ok: true,
+      headers: new Headers(),
+    } as Response);
+
+    await safeFetch('https://example.com/api');
+
+    const callArgs = vi.mocked(fetch).mock.calls[0];
+    const fetchOpts = callArgs[1] as Record<string, unknown>;
+    expect(fetchOpts.dispatcher).toBeDefined();
+    expect(fetchOpts.dispatcher).toBeInstanceOf(Agent);
+    expect(fetchOpts.redirect).toBe('manual');
+  });
+
+  it('does NOT pass a dispatcher for IP literal URLs', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce({
+      status: 200,
+      ok: true,
+      headers: new Headers(),
+    } as Response);
+
+    await safeFetch('https://93.184.216.34/');
+
+    const callArgs = vi.mocked(fetch).mock.calls[0];
+    const fetchOpts = callArgs[1] as Record<string, unknown>;
+    expect(fetchOpts.dispatcher).toBeUndefined();
+  });
+
+  it('revalidates with pinning on redirect to a different hostname', async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce({
+        status: 301,
+        ok: false,
+        headers: new Headers({ location: 'https://example.org/page' }),
+      } as Response)
+      .mockResolvedValueOnce({
+        status: 200,
+        ok: true,
+        headers: new Headers(),
+      } as Response);
+
+    await safeFetch('https://example.com/redirect');
+
+    const call1Opts = vi.mocked(fetch).mock.calls[0][1] as Record<string, unknown>;
+    const call2Opts = vi.mocked(fetch).mock.calls[1][1] as Record<string, unknown>;
+    expect(call1Opts.dispatcher).toBeInstanceOf(Agent);
+    expect(call2Opts.dispatcher).toBeInstanceOf(Agent);
+  });
+
+  it('blocks hostnames that resolve to reserved IPs before fetch is called', async () => {
+    await expect(safeFetch('https://localhost/admin')).rejects.toThrow('safeFetch');
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('blocks IP literal in reserved range before fetch', async () => {
+    await expect(safeFetch('https://127.0.0.1/secret')).rejects.toThrow('safeFetch');
+    expect(fetch).not.toHaveBeenCalled();
   });
 });

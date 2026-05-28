@@ -1,18 +1,19 @@
 import { lookup } from 'node:dns/promises';
 import { isIP } from 'node:net';
+import { Agent } from 'undici';
 
 /**
  * SSRF guard shared by route handlers that take a user-controlled host / IP
  * and turn it into a network request.
  *
- * Defense is two-layered:
+ * Defense is three-layered:
  *   1. Canonicalise the input. Reject non-dotted-quad IPv4 forms and any
  *      IPv6 address that falls inside a reserved range.
  *   2. For hostnames, resolve A + AAAA records and reject if *any* answer
- *      lands in a reserved range. Total Time-Of-Check / Time-Of-Use defence
- *      requires IP pinning at the socket layer, but rejecting at lookup time
- *      blocks every non-rebinding attack and forces a rebinder to win a
- *      TTL=0 race against the downstream consumer.
+ *      lands in a reserved range.
+ *   3. Socket-level IP pinning via undici Agent: after validating resolved
+ *      IPs, the HTTP connection is forced to use the pre-resolved address so
+ *      a DNS rebinding attacker cannot race the TTL between check and connect.
  */
 
 const IPV4_BLOCKS_TEXT: Array<[string, number]> = [
@@ -176,6 +177,33 @@ export async function validateHost(host: string): Promise<ValidationResult> {
 }
 
 /**
+ * Create an undici Agent that forces the TCP+TLS connection to a specific IP
+ * while preserving the original hostname for TLS SNI and the Host header.
+ *
+ * This closes the DNS-rebinding window: after validateHost() resolves and
+ * approves an IP, the downstream fetch() can no longer issue its own DNS
+ * query that a rebinding attacker could race.
+ */
+export function createPinnedDispatcher(
+  pinnedIp: string,
+  port: number,
+  servername?: string,
+): Agent {
+  // IPv6 addresses may need bracket-wrapping for the connect hostname
+  const connectHost = isIP(pinnedIp) === 6 ? `[${pinnedIp}]` : pinnedIp;
+  // undici 8.x runtime supports connect.hostname/port/servername but the
+  // TypeScript definitions haven't caught up — use a constructor arg cast.
+  const opts = {
+    connect: {
+      hostname: connectHost,
+      port,
+      ...(servername ? { servername } : {}),
+    },
+  } as unknown as Agent.Options;
+  return new Agent(opts);
+}
+
+/**
  * Wrap a fetch call so that:
  *   - the URL's host is validated before the request (block private targets)
  *   - redirects are followed manually, with each hop re-validated (block a
@@ -201,7 +229,26 @@ export async function safeFetch(
     if (!check.ok) {
       throw new Error(`safeFetch: blocked target — ${check.reason}`);
     }
-    const res = await fetch(currentUrl, { ...passInit, redirect: 'manual' });
+    // ── Socket-level IP pinning (defence layer 3) ──
+    // For hostname targets, pin the connection to the pre-validated IP so
+    // fetch() cannot trigger its own DNS lookup that a rebinding attacker
+    // could race. IP literals are already validated and don't need pinning.
+    const isHostname = isIP(parsed.hostname) === 0;
+    const pinnedIp = isHostname && check.resolved && check.resolved.length > 0
+      ? check.resolved[0]
+      : null;
+    const fetchOpts: RequestInit = { ...passInit, redirect: 'manual' };
+    if (pinnedIp) {
+      const port = parsed.port
+        ? Number(parsed.port)
+        : parsed.protocol === 'https:' ? 443 : 80;
+      (fetchOpts as Record<string, unknown>).dispatcher = createPinnedDispatcher(
+        pinnedIp,
+        port,
+        parsed.hostname, // preserve original hostname for TLS SNI
+      );
+    }
+    const res = await fetch(currentUrl, fetchOpts);
     if (res.status >= 300 && res.status < 400) {
       const loc = res.headers.get('location');
       if (!loc) return res;

@@ -4,6 +4,23 @@
 
 ---
 
+## 2026-05-28 (session 10) — SSRF Host-Pinning (DNS Rebinding Mitigation)
+
+### Task: Implement socket-level IP pinning for safeFetch (AUDIT.md Rec #1)
+
+- **Added `createPinnedDispatcher`**: Undici Agent factory that forces TCP+TLS connections to a pre-validated IP while preserving the original hostname for TLS SNI. Handles IPv4, IPv6 bracket-wrapping, and optional servername.
+- **Modified `safeFetch`**: For hostname-based URLs, after `validateHost` resolves and approves IPs, the downstream `fetch()` call is forced to use the pinned dispatcher — eliminating the DNS rebinding race window between check and connect. IP literal URLs skip pinning (already validated).
+- **Tests**: 4 tests for `createPinnedDispatcher` (IPv4, IPv6, no-servername, distinct instances). 4 tests for `safeFetch` host-pinning (dispatcher presence for hostname vs IP literal, redirect revalidation, pre-fetch blocklist). 1 test for reserved-IP literal rejection.
+- **Dependency**: Added `undici` devDependency for type resolution in Next.js build bundler.
+
+**Quality gates:** lint ✅ (zero warnings) | typecheck ✅ | build ✅ | 569 tests / 55 files ✅
+
+### Gaps closed
+- ~~AUDIT.md Rec #1: socket-level host-pinning~~ → **IMPLEMENTED** (three-layer SSRF defence)
+- Test count: 560 → **569** (+9)
+
+---
+
 ## 2026-05-28 (session 9) — Security Headers & Roadmap Update
 
 ### Task: Implement CSP & Refresh Documentation

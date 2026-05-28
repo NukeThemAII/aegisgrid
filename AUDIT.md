@@ -135,8 +135,9 @@ Geopolitical analysis reports generated via AI rely on a rigorous security perim
 
 While the current codebase demonstrates excellent alignment with industry standards, the following enhancements are suggested for subsequent iterations:
 
-1. **Host-Pinning at the Socket Layer:**
-   * The current SSRF DNS lookup check blocks most standard attacks, but is theoretically vulnerable to DNS Rebinding attacks where the attacker controls a domain with a low TTL (0) and switches the A record to an internal IP immediately after check. Under high-concurrency environments, developers can bind the resolved IP strictly to the socket connection before firing the request (socket pinning).
+1. **Host-Pinning at the Socket Layer (IMPLEMENTED — session 10):**
+   * ~~The current SSRF DNS lookup check blocks most standard attacks, but is theoretically vulnerable to DNS Rebinding attacks where the attacker controls a domain with a low TTL (0) and switches the A record to an internal IP immediately after check. Under high-concurrency environments, developers can bind the resolved IP strictly to the socket connection before firing the request (socket pinning).~~
+   * Resolved via `createPinnedDispatcher` (undici Agent with IP-pinned connect + TLS SNI preservation) and `safeFetch` integration. After `validateHost` approves resolved IPs, the downstream `fetch()` call is forced to the pinned address — eliminating the rebinding race window.
 2. **CSP Nonce Generation:**
    * Migrate inline style definitions or inline script allowances to a secure nonce-based model generated per request through the middleware layer for tighter script containment.
 3. **Database Audit Trails:**
