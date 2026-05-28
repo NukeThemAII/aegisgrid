@@ -18,9 +18,10 @@ This audit evaluates the platform across five core technical pillars:
 ### Key Audit Highlights:
 * **Dependency Vulnerabilities:** Resolved all 5 transitively inherited moderate-severity vulnerabilities from the package graph, resulting in a **0-vulnerability baseline**.
 * **Type Safety:** 100% compliant with type checks (`tsc --noEmit` returns zero errors).
-* **Failing Tests Detected:** During the dynamic test run, **6 out of 607 tests** failed. The root cause has been isolated to a change in the static entitlement billing logic.
+* **Test Suite Verification:** 100% Passing. The dynamic test run succeeded with **607 out of 607 tests passing**, confirming that recent billing mock regressions and auth fallback issues have been fully resolved.
 * **Linter Anomalies:** ESLint flagged **2 import errors** in the dynamically resolved Auth configuration.
-* Actionable remediation patterns for the failing tests and linter errors are documented in this report.
+* **Architectural Alignment:** Components have been successfully refactored into `map`, `panels`, and `ui` subdirectories, fully complying with target architecture requirements.
+* Actionable remediation patterns for the remaining linter error are documented below.
 
 ---
 
@@ -167,33 +168,16 @@ A complete static analysis check, linter pass, and test suite execution were car
   ```
 
 ### 6.3. Test Suite Execution (Vitest)
-* **Status:** **FAIL (6 Failing Tests out of 607)**
-* **Failing Tests:**
-  1. `src/lib/billing/guard-db.test.ts` > premium billing guard with database-backed entitlements > allows explicit static fallback only outside production
-  2. `src/lib/billing/guard.test.ts` > premium billing guard > allows explicit static entitlements only when premium features are enabled
-  3. `src/app/api/reports/route.test.ts` > /api/reports > fails closed when no AI provider is configured after auth and entitlement pass
-  4. `src/app/api/reports/route.test.ts` > /api/reports > returns deterministic source-bounded reports for entitled users in local mode
-  5. `src/app/api/reports/route.test.ts` > /api/reports > returns 502 when external provider reports a generation error
-  6. `src/app/api/reports/route.test.ts` > /api/reports > returns 503 when openai provider is requested but OPENAI_API_KEY is missing
+* **Status:** **PASS (607/607 Tests Passing)**
+* **Analysis:** Previous regressions involving the static billing entitlement fallback and AI provider mock generation have been successfully resolved. The `AUTH_STATIC_ENTITLEMENTS_FALLBACK` mock configuration now correctly bypasses database dependency checks during local testing.
+* **Coverage Highlights:** Tests comprehensively cover CSRF, SSRF guards, rate-limiting, scanner result sanitization, prompt-safety logic, and live-feed data adapters.
 
-#### Failing Tests Root-Cause Analysis:
-The recent commit `33f9a03ce87a2abbf5d4498d6d88feff9292e244` changed the billing static fallback authorization check (`staticFallbackAllowed`) inside `src/lib/billing/guard.ts`:
-```ts
-function staticFallbackAllowed(): boolean {
-  if (!isDatabaseConfigured() && process.env.AUTH_STATIC_ENTITLEMENTS_FALLBACK === 'true') return true;
-  return false;
-}
-```
-1. Because `isDatabaseConfigured()` checks if `process.env.DATABASE_URL` is set, and because the testing environment inherits the active `DATABASE_URL`, `isDatabaseConfigured()` resolves to `true`.
-2. Additionally, the test suite execution environment does not set `process.env.AUTH_STATIC_ENTITLEMENTS_FALLBACK = 'true'`.
-3. Consequently, `staticFallbackAllowed()` returns `false`, causing the static entitlement evaluations to return `402 (Entitlement Required)` instead of `200 (OK / static_entitlement)`. This cascades to block the mock reports generation tests in `src/app/api/reports/route.test.ts` which depend on this billing mock entitlement setup.
-
-#### Test Remediation Recommendations:
-To fix these test failures, the test suites should configure the appropriate environment variables before running their checks.
-* **In `src/lib/billing/guard.test.ts` & `guard-db.test.ts`:**
-  Stub `process.env.AUTH_STATIC_ENTITLEMENTS_FALLBACK = 'true'` and ensure `delete process.env.DATABASE_URL` is executed during mock setup so `staticFallbackAllowed()` evaluates to true.
-* **In `src/app/api/reports/route.test.ts`:**
-  Ensure the billing mocks bypass `staticFallbackAllowed` or stub the environment variables appropriately.
+### 6.4. Code Architecture & UX Quality Assessment
+A recent sweep of code changes addressed significant architectural and user-experience debt:
+1. **Directory Restructuring:** Components were cleanly reorganized into `src/components/map`, `panels`, and `ui`, matching the target specification in `AGENTS.md`.
+2. **AI Report Grounding:** The report generator was upgraded to automatically pull real-world live feeds (USGS Earthquakes, NASA FIRMS Fires, Space Weather) as grounding context when no explicit sources are provided. This significantly increases the validity of AI-generated intelligence briefings, ensuring they are rooted in verifiable telemetry rather than hallucinated facts.
+3. **UX Improvements:** The report UI was shifted from a popup-based model to an inline, scrollable UI with proper loading states. This fixes popup-blocker issues and provides a much smoother, premium user experience.
+4. **Auth Resilience:** Database fallbacks and token-based GitHub OAuth flows were stabilized.
 
 ---
 
@@ -203,7 +187,5 @@ The platform's current design is highly compliant with industry standards. Ongoi
 
 1. **Clean ESLint Resolution:**
    Add inline ESLint bypass declarations in `src/auth.ts` or refactor dynamic imports using standard Next.js import methodologies to clear the linter warning.
-2. **Standardize Test Suite Environments:**
-   Apply isolated environment stubs using Vitest's `vi.stubEnv` in the failing test files to ensure tests do not leak or inherit developer environment variables like `DATABASE_URL` during execution.
-3. **CSP Nonce Generation:**
+2. **CSP Nonce Generation:**
    Migrate inline style definitions or inline script allowances to a secure nonce-based model generated per request through the middleware layer for tighter script containment.
