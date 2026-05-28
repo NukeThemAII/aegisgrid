@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Crown, Zap, Shield, ChevronRight, Activity, BarChart3, ArrowLeft } from 'lucide-react';
 import SensorCharts from '@/components/premium/SensorCharts';
 import AiAnalysis from '@/components/premium/AiAnalysis';
+import ThreatAnalysis from '@/components/premium/ThreatAnalysis';
 
 export default function PremiumPage() {
   const [session, setSession] = useState<any>(null);
@@ -114,6 +115,16 @@ export default function PremiumPage() {
                 <span className="text-[9px] font-mono text-[var(--text-muted)] ml-2">Real-time OSINT feeds</span>
               </div>
               <SensorCharts />
+            </section>
+
+            {/* ── Threat Intelligence ── */}
+            <section className="border border-[var(--border-primary)] rounded-xl p-5">
+              <div className="flex items-center gap-2 mb-4">
+                <Shield size={18} className="text-[#FF9500]" />
+                <h2 className="text-sm font-mono font-bold tracking-wider text-white">THREAT INTELLIGENCE</h2>
+                <span className="text-[9px] font-mono text-[var(--text-muted)] ml-2">OTX · Tor · Reputation</span>
+              </div>
+              <ThreatAnalysis />
             </section>
 
             {/* ── Quick Stats ── */}
