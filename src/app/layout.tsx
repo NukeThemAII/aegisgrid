@@ -176,6 +176,7 @@ import { Analytics } from "@vercel/analytics/next";
 
 import ErrorBoundary from '@/components/ui/ErrorBoundary';
 import { AuthButton } from '@/components/ui/AuthButton';
+import { Crown } from 'lucide-react';
 
 export default function RootLayout({
   children,
@@ -200,7 +201,14 @@ export default function RootLayout({
         />
       </head>
       <body className="antialiased relative">
-        <div className="absolute top-14 right-3 md:top-16 md:right-5 z-[300] pointer-events-auto">
+        <div className="absolute top-14 right-3 md:top-16 md:right-5 z-[300] pointer-events-auto flex items-center gap-2">
+          <a
+            href="/premium"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-[var(--gold-primary)]/15 text-[var(--gold-primary)] hover:bg-[var(--gold-primary)]/25 rounded border border-[var(--gold-primary)]/30 transition-colors no-underline"
+          >
+            <Crown size={14} />
+            <span className="hidden md:inline">PREMIUM</span>
+          </a>
           <AuthButton />
         </div>
         <ErrorBoundary name="AEGISGRID Core">
