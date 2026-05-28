@@ -4,6 +4,32 @@
 
 ---
 
+## 2026-05-28 (session 13) — OsintPanel Fixes + Scanner Response Sanitization
+
+### Task: Fix recon toolkit tabs and add scanner response field allowlisting
+
+- **Fixed CVE lookup**: `vuln` tab now calls `/api/osint/cve?cve=` instead of scanner
+  route. CVE IDs are now resolved via MITRE CVE API with full CVSS/CWE details.
+- **Auth error UX**: Scanner active tabs (port scan, headers, SSL, tech) now show
+  friendly messages explaining auth requirements, backend config, and rate limits.
+- **Scanner response sanitization**: Added `sanitizeScannerResponse()` with
+  top-level field allowlist (ok, scan_type, mode, label, status, source,
+  fetched_at, data, error, code, detail), recursive key stripping, and max
+  depth enforcement. Both passive and active scan paths sanitized before
+  returning to client.
+- **Tests**: 5 new sanitization tests (well-formed passthrough, unknown key
+  stripping, error fields, null/non-object, max depth truncation).
+
+**Quality gates:** lint ✅ | typecheck ✅ | build ✅ | 590 tests / 56 files ✅
+
+### Gaps closed
+- ~~Vuln tab used wrong route~~ → **CVE route wired**
+- ~~Active scanner tabs show cryptic errors~~ → **Friendly auth guidance**
+- ~~Scanner backend response unsanitized~~ → **Field allowlisting + depth enforcement**
+- Test count: 585 → **590** (+5)
+
+---
+
 ## 2026-05-28 (session 12) — Premium Frontend Panel (Stripe + x402 + AI Reports)
 
 ### Task: Surface billing/payment infrastructure in the dashboard UI

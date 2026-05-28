@@ -49,3 +49,49 @@ export function getStringArrayField(record: unknown, key: string): string[] {
   if (!Array.isArray(value)) return [];
   return value.filter((item): item is string => typeof item === 'string');
 }
+
+// ── Allowed fields for scanner responses ────────────────────────────────
+
+/** Fields the scanner API is allowed to return to clients. */
+const ALLOWED_SCANNER_TOP_KEYS = new Set([
+  'ok', 'scan_type', 'mode', 'label', 'status', 'source',
+  'fetched_at', 'data', 'error', 'code', 'detail',
+]);
+
+/** Max allowed depth for nested objects in scanner responses. */
+const MAX_SCANNER_RESPONSE_DEPTH = 5;
+
+/**
+ * Recursively strip unknown keys from a scanner response object.
+ * Only allows whitelisted top-level keys and recursively strips
+ * unknown keys from nested objects up to MAX_SCANNER_RESPONSE_DEPTH.
+ */
+function stripUnknownKeys(obj: unknown, depth: number = 0): unknown {
+  if (depth > MAX_SCANNER_RESPONSE_DEPTH) return undefined;
+  if (obj === null || obj === undefined) return obj;
+  if (typeof obj !== 'object') return obj;
+
+  if (Array.isArray(obj)) {
+    return obj.map(item => stripUnknownKeys(item, depth + 1));
+  }
+
+  const record = obj as Record<string, unknown>;
+  const result: Record<string, unknown> = {};
+
+  for (const key of Object.keys(record)) {
+    const allowedAtTop = depth > 0 || ALLOWED_SCANNER_TOP_KEYS.has(key);
+    if (!allowedAtTop) continue;
+    result[key] = stripUnknownKeys(record[key], depth + 1);
+  }
+
+  return result;
+}
+
+/**
+ * Sanitize a scanner response — strips unknown fields and enforces
+ * a maximum nesting depth. Use this for responses from external
+ * scanner backends before returning to the client.
+ */
+export function sanitizeScannerResponse(data: unknown): unknown {
+  return stripUnknownKeys(data);
+}

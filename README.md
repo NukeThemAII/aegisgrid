@@ -442,8 +442,8 @@ npm run build  # full Next.js production build
 - [x] Premium frontend panel (Stripe checkout/portal, x402 pay-per-use info, AI reports UI)
 
 ### Up next
-- [ ] Scanner response sanitization (response field allowlisting for proxied scanner backend)
-- [ ] Redis job queue and background feed refresh workers
+- [x] Scanner response sanitization (field allowlisting + depth enforcement for proxied backend)
+- [ ] CSRF protection for state-changing routes
 - [ ] Lawful radiosonde (balloons) source adapter
 - [ ] Expanded AIS maritime tracking
 - [ ] Comms/collaboration features

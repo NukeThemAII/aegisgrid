@@ -18,6 +18,7 @@ import {
   classifyTarget,
   sanitizeTargetForLog,
 } from '@/lib/scanner-audit';
+import { sanitizeScannerResponse } from '@/lib/scanner-result-format';
 
 /**
  * AEGISGRID — Scanner Route (V2 Passive Integration)
@@ -229,7 +230,7 @@ export async function GET(req: Request) {
         ...policyAudit,
       });
 
-      return NextResponse.json({
+      return NextResponse.json(sanitizeScannerResponse({
         ok: true,
         scan_type: scanType,
         mode: 'passive',
@@ -238,7 +239,7 @@ export async function GET(req: Request) {
         source: 'aegisgrid-scanner-v2',
         fetched_at: new Date().toISOString(),
         data,
-      });
+      }));
     } catch {
       await recordScanAudit({
         scan_type: scanType,
@@ -289,7 +290,7 @@ export async function GET(req: Request) {
       ...policyAudit,
     });
 
-    return NextResponse.json(data, { status: res.status });
+    return NextResponse.json(sanitizeScannerResponse(data), { status: res.status });
   } catch {
     await recordScanAudit({
       scan_type: scanType,

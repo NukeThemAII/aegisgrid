@@ -19,13 +19,17 @@ Wire into desktop sidebar.
 ### 1. [x] Feed route per-route rate limiting
 **Done:** commit `b42beff` — 17 routes rate-limited, 16 new tests.
 
-### 2. [ ] Scanner response sanitization
+### 1. [x] Fix OsintPanel recon toolkit — wire CVE to OSINT route, auth UX
+**Done:** commit `ef2422e` — CVE tab uses /api/osint/cve, friendly auth error messages.
+
+### 2. [x] Scanner response sanitization
 **Why:** MEDIUM gap. Scanner proxy responses from external backend pass through
 without field allowlisting. An attacker-controllable scanner backend could
 inject unexpected fields into the public API response.
 **Scope:** Add response shape validation + field allowlisting in
 `src/app/api/scanner/route.ts`. Tests for field stripping.
 **Estimate:** ~1h.
+**Done:** commit `(pending)` — sanitizeScannerResponse with top-level allowlist, depth enforcement, 5 tests.
 
 ### 3. [ ] CSRF protection for state-changing routes
 **Why:** MEDIUM gap. Routes like `/api/billing/checkout`, `/api/billing/portal`,
