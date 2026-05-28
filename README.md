@@ -442,11 +442,27 @@ npm run build  # full Next.js production build
 - [x] Premium frontend panel (Stripe checkout/portal, x402 pay-per-use info, AI reports UI)
 
 ### Up next
-- [x] Scanner response sanitization (field allowlisting + depth enforcement for proxied backend)
-- [ ] CSRF protection for state-changing routes
-- [ ] Lawful radiosonde (balloons) source adapter
+- [x] CSRF protection (proxy-level Origin/Referer validation, 17 tests)
+- [x] Premium status endpoint + config-aware UI (setup guide, graceful fallback)
+- [x] Scanner response sanitization (field allowlisting + depth enforcement)
+- [x] Premium frontend panel (Stripe checkout/portal, x402 info, AI reports, setup guide)
+- [x] Feed route per-route rate limiting (17 routes with 429/Retry-After)
+- [x] SSRF host-pinning (DNS rebinding mitigation)
+
+### Up next
+- [ ] Lawful radiosonde (balloons) source adapter — last placeholder route
+- [ ] Redis job queue and background feed refresh workers
 - [ ] Expanded AIS maritime tracking
 - [ ] Comms/collaboration features
+
+### Credentials needed to activate premium
+| Feature | Required env vars |
+|---|---|
+| Stripe Pro | STRIPE_SECRET_KEY, NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY, STRIPE_WEBHOOK_SECRET, STRIPE_PRICE_PRO_MONTHLY |
+| x402 USDC | X402_ENABLED=true, X402_RECEIVING_ADDRESS, X402_FACILITATOR_URL |
+| AI Reports | FEATURE_AI_REPORTS=true, AI_PROVIDER=deterministic (or openai + key) |
+| Auth tokens | AUTH_USER_TOKENS (subject:token pairs) or AUTH_GITHUB_ID + AUTH_GITHUB_SECRET |
+| Enable all | FEATURE_PREMIUM=true
 
 > Completed items are foundation scaffolds, not full commercial production systems.
 > Remaining feature flags default to `false`; don't claim premium/auth/billing is live.
