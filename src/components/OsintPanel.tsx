@@ -14,17 +14,17 @@ import {
 // Passive modules run in-process and are available to all users.
 // Active modules require verified target + scanner backend.
 const TABS = [
-  { id: 'scanner', label: 'PORT SCAN \u{1F512}', icon: Radar, placeholder: 'IP or hostname (verified targets only)', color: '#00E5FF', mode: 'active' as const },
+  { id: 'scanner', label: 'PORT SCAN 🔒', icon: Radar, placeholder: 'IP or hostname (verified targets only)', color: '#00E5FF', mode: 'active' as const },
   { id: 'vuln', label: 'CVE LOOKUP', icon: Bug, placeholder: 'CVE ID (e.g. CVE-2024-1234)', color: '#FF3D3D', mode: 'passive' as const },
 
   { id: 'dns', label: 'DNS', icon: Server, placeholder: 'Domain name', color: '#448AFF', mode: 'passive' as const },
   { id: 'whois', label: 'WHOIS', icon: FileText, placeholder: 'Domain or IP', color: '#FFD700', mode: 'passive' as const },
   { id: 'certs', label: 'CERTS', icon: Lock, placeholder: 'Domain name', color: '#E040FB', mode: 'passive' as const },
   { id: 'threats', label: 'THREATS', icon: AlertTriangle, placeholder: 'IP, domain, or hash', color: '#FF9500', mode: 'passive' as const },
-  { id: 'headers', label: 'HEADERS \u{1F512}', icon: Code, placeholder: 'Hostname (verified targets only)', color: '#87CEEB', mode: 'active' as const },
-  { id: 'ssl', label: 'SSL/TLS \u{1F512}', icon: Shield, placeholder: 'Domain (verified targets only)', color: '#76FF03', mode: 'active' as const },
+  { id: 'headers', label: 'HEADERS 🔒', icon: Code, placeholder: 'Hostname (verified targets only)', color: '#87CEEB', mode: 'active' as const },
+  { id: 'ssl', label: 'SSL/TLS 🔒', icon: Shield, placeholder: 'Domain (verified targets only)', color: '#76FF03', mode: 'active' as const },
   { id: 'subdomains', label: 'SUBDOMAINS', icon: Layers, placeholder: 'Domain to enumerate (passive CT logs)', color: '#00BCD4', mode: 'passive' as const },
-  { id: 'tech', label: 'TECH \u{1F512}', icon: Fingerprint, placeholder: 'Hostname (verified targets only)', color: '#9C27B0', mode: 'active' as const },
+  { id: 'tech', label: 'TECH 🔒', icon: Fingerprint, placeholder: 'Hostname (verified targets only)', color: '#9C27B0', mode: 'active' as const },
   { id: 'sweep', label: 'IP SWEEP', icon: Crosshair, placeholder: 'Enter IP address (e.g. 8.8.8.8)', color: '#FF3D3D', mode: 'passive' as const },
 ];
 
@@ -104,7 +104,7 @@ function OsintPanelInner({ isMobile, onSweepVisualize }: OsintPanelProps) {
         case 'whois': url = `/api/osint/whois?domain=${encodeURIComponent(query)}`; break;
         case 'threats': url = `/api/osint/threats?query=${encodeURIComponent(query)}`; break;
         case 'scanner': url = `/api/scanner?target=${encodeURIComponent(query)}&type=${scanType}`; break;
-        case 'vuln': url = `/api/scanner?target=${encodeURIComponent(query)}&type=vuln`; break;
+        case 'vuln': url = `/api/osint/cve?cve=${encodeURIComponent(query)}`; break;
         case 'headers': url = `/api/scanner?target=${encodeURIComponent(query)}&type=headers`; break;
         case 'ssl': url = `/api/scanner?target=${encodeURIComponent(query)}&type=ssl`; break;
         case 'subdomains': url = `/api/scanner?target=${encodeURIComponent(query)}&type=subdomains`; break;
@@ -116,7 +116,17 @@ function OsintPanelInner({ isMobile, onSweepVisualize }: OsintPanelProps) {
         setResults(data);
         setHistory(prev => [{ tab: activeTab, query, time: new Date().toLocaleTimeString() }, ...prev.slice(0, 9)]);
       } else {
-        setError(data.error || 'Lookup failed');
+        // Friendly messages for common error types
+        const code = data.code || '';
+        if (code === 'ACTIVE_SCAN_REQUIRES_AUTH' || code === 'AUTH_REQUIRED') {
+          setError('This scan requires authentication. Sign in with GitHub (top-right) or configure an API token.');
+        } else if (code === 'SCANNER_BACKEND_NOT_CONFIGURED') {
+          setError('Active scanner backend is not configured on this deployment. Passive lookups are available.');
+        } else if (code === 'RATE_LIMITED') {
+          setError(data.detail || 'Rate limit exceeded. Please wait before retrying.');
+        } else {
+          setError(data.error || data.message || 'Lookup failed');
+        }
       }
     } catch { setError('Network error'); }
     finally { setLoading(false); }
