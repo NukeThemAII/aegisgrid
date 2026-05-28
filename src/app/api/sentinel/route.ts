@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { enforceRateLimit, RATE_LIMITS } from '@/lib/rate-limit';
 
 // Sentinel-1 SAR Satellite — STAC Catalog via Element84 Earth Search + Copernicus fallback
 
@@ -42,6 +43,8 @@ interface SentinelScene {
   area_km2: number | null;
 }
 export async function GET(req: Request) {
+  const rateLimitResponse = enforceRateLimit(RATE_LIMITS['sentinel'], req);
+  if (rateLimitResponse) return rateLimitResponse;
   const { searchParams } = new URL(req.url);
   const lat = parseFloat(searchParams.get('lat') || '0');
   const lng = parseFloat(searchParams.get('lng') || '0');

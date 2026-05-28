@@ -1,5 +1,6 @@
 
 import { NextResponse } from 'next/server';
+import { enforceRateLimit, RATE_LIMITS } from '@/lib/rate-limit';
 
 /**
  * AEGISGRID — Satellite Tracking API
@@ -189,7 +190,9 @@ async function fetchTLEFromSource(source: typeof TLE_SOURCES[0]): Promise<string
   }
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  const rateLimitResponse = enforceRateLimit(RATE_LIMITS['satellites'], request);
+  if (rateLimitResponse) return rateLimitResponse;
   try {
     // Fetch all groups in parallel for maximum speed & resilience
     const results = await Promise.allSettled(

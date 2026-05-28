@@ -1,5 +1,6 @@
 
 import { NextResponse } from 'next/server';
+import { enforceRateLimit, RATE_LIMITS } from '@/lib/rate-limit';
 
 /**
  * AEGISGRID — Severe Weather & Anomalies API
@@ -7,7 +8,9 @@ import { NextResponse } from 'next/server';
  * Tracks: Severe Storms (Hurricanes/Typhoons), Volcanoes, Sea Ice
  */
 
-export async function GET() {
+export async function GET(request: Request) {
+  const rateLimitResponse = enforceRateLimit(RATE_LIMITS['weather'], request);
+  if (rateLimitResponse) return rateLimitResponse;
   try {
     // Fetch currently open events from EONET v3
     const res = await fetch('https://eonet.gsfc.nasa.gov/api/v3/events?status=open&limit=100', {

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { enforceRateLimit, RATE_LIMITS } from '@/lib/rate-limit';
 
 // Country Intelligence Index — composite risk from earthquakes, conflicts, instability
 // Inspired by WorldMonitor's 12-signal risk scoring
@@ -57,7 +58,9 @@ function isExchangeOpen(ex: typeof EXCHANGES[0]): boolean {
   } catch { return false; }
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  const rateLimitResponse = enforceRateLimit(RATE_LIMITS['country-risk'], request);
+  if (rateLimitResponse) return rateLimitResponse;
   try {
     const exchangeStatus = EXCHANGES.map(ex => ({
       name: ex.name, country: ex.country, open: isExchangeOpen(ex),

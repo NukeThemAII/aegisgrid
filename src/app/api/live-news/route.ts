@@ -1,5 +1,6 @@
 
 import { NextResponse } from 'next/server';
+import { enforceRateLimit, RATE_LIMITS } from '@/lib/rate-limit';
 
 /**
  * AEGISGRID — Live News Feeds v3
@@ -50,7 +51,9 @@ const LIVE_FEEDS = [
   { id: 'rt',      name: 'RT News',    city: 'Moscow',  country: 'RU', lat: 55.755, lng:  37.617, url: 'https://rumble.com/c/RTNewsEN',                                                                  embed_allowed: false, category: 'state',      language: 'en' },
 ];
 
-export async function GET() {
+export async function GET(request: Request) {
+  const rateLimitResponse = enforceRateLimit(RATE_LIMITS['live-news'], request);
+  if (rateLimitResponse) return rateLimitResponse;
   return NextResponse.json({
     feeds: LIVE_FEEDS,
     total: LIVE_FEEDS.length,

@@ -1,5 +1,6 @@
 
 import { NextResponse } from 'next/server';
+import { enforceRateLimit, RATE_LIMITS } from '@/lib/rate-limit';
 
 /**
  * AEGISGRID — Flight Data API
@@ -186,7 +187,9 @@ let lastFetchTime = 0;
 const CACHE_TTL = 45000; // 45 seconds cache window
 let fetchPromise: Promise<FlightResponseData> | null = null;
 
-export async function GET() {
+export async function GET(request: Request) {
+  const rateLimitResponse = enforceRateLimit(RATE_LIMITS['flights'], request);
+  if (rateLimitResponse) return rateLimitResponse;
   const now = Date.now();
 
   // Return cached data if within TTL

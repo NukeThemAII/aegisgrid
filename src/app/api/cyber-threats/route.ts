@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { enforceRateLimit, RATE_LIMITS } from '@/lib/rate-limit';
 
 // Cyber threat intelligence from public feeds
 // Inspired by WorldMonitor's infrastructure tracking
@@ -34,7 +35,9 @@ interface CyberThreatResult {
   timestamp: string;
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  const rateLimitResponse = enforceRateLimit(RATE_LIMITS['cyber-threats'], request);
+  if (rateLimitResponse) return rateLimitResponse;
   try {
     const results: CyberThreatResult = { threats: [], stats: {}, timestamp: new Date().toISOString() };
 

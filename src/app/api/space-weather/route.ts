@@ -1,5 +1,6 @@
 
 import { NextResponse } from 'next/server';
+import { enforceRateLimit, RATE_LIMITS } from '@/lib/rate-limit';
 
 /**
  * AEGISGRID — Space Weather API
@@ -21,7 +22,9 @@ interface SolarFlare {
   end: string;
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  const rateLimitResponse = enforceRateLimit(RATE_LIMITS['space-weather'], request);
+  if (rateLimitResponse) return rateLimitResponse;
   try {
     const [kpRes, alertsRes, flareRes] = await Promise.allSettled([
       fetch('https://services.swpc.noaa.gov/json/planetary_k_index_1m.json', {

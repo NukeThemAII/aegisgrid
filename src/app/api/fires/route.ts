@@ -1,5 +1,6 @@
 
 import { NextResponse } from 'next/server';
+import { enforceRateLimit, RATE_LIMITS } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -30,7 +31,9 @@ interface EonetEvent {
   geometry?: EonetGeometry[];
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  const rateLimitResponse = enforceRateLimit(RATE_LIMITS['fires'], request);
+  if (rateLimitResponse) return rateLimitResponse;
   try {
     let fires: FirePoint[] = [];
     let source = '';

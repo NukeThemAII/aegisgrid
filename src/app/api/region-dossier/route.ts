@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { enforceRateLimit, RATE_LIMITS } from '@/lib/rate-limit';
 
 /**
  * AEGISGRID — Region Dossier API
@@ -20,6 +21,8 @@ interface CurrencyInfo {
 }
 
 export async function GET(request: Request) {
+  const rateLimitResponse = enforceRateLimit(RATE_LIMITS['region-dossier'], request);
+  if (rateLimitResponse) return rateLimitResponse;
   const { searchParams } = new URL(request.url);
   const lat = parseFloat(searchParams.get('lat') || '0');
   const lng = parseFloat(searchParams.get('lng') || '0');

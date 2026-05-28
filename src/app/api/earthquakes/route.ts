@@ -1,5 +1,6 @@
 
 import { NextResponse } from 'next/server';
+import { enforceRateLimit, RATE_LIMITS } from '@/lib/rate-limit';
 
 /**
  * AEGISGRID — Earthquake Data API
@@ -22,7 +23,9 @@ interface UsgsFeature {
   };
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  const rateLimitResponse = enforceRateLimit(RATE_LIMITS['earthquakes'], request);
+  if (rateLimitResponse) return rateLimitResponse;
   try {
     const url = 'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/2.5_day.geojson';
     const res = await fetch(url, {

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { enforceRateLimit, RATE_LIMITS } from '@/lib/rate-limit';
 import { fetchAsfinagCameras } from './asfinag';
 import { fetchBulgariaCameras } from './bulgaria';
 import { fetchGreeceCameras } from './greece';
@@ -419,6 +420,8 @@ function getRegionsForBounds(lat: number, lng: number, _radius: number): string[
 }
 
 export async function GET(request: Request) {
+  const rateLimitResponse = enforceRateLimit(RATE_LIMITS['cctv'], request);
+  if (rateLimitResponse) return rateLimitResponse;
   try {
     const { searchParams } = new URL(request.url);
     const region = searchParams.get('region');

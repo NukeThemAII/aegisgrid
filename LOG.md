@@ -4,6 +4,25 @@
 
 ---
 
+## 2026-05-28 (session 11) — Feed Route Per-Route Rate Limiting
+
+### Task: Add rate limiting to all external-data feed routes
+
+- **Created `src/lib/rate-limit.ts`**: Centralized in-memory sliding-window rate limiter with route-aware configs, 429 responses with `Retry-After` headers, and `x-forwarded-for`/`x-real-ip` identifier extraction. Periodic cleanup interval prevents memory leaks. 20 preset configs tuned for free-tier upstream API limits.
+- **Applied rate limiting to 17 feed routes**: earthquakes, fires, flights, satellites, space-weather, gdelt, news, weather, air-quality, maritime, cctv, cyber-threats, live-news, country-risk, region-dossier, markets, sentinel. Each route now enforces its preset limit at the top of the GET handler.
+- **Tests**: 16 tests for `getRateLimitIdentifier` (5), `checkRateLimit` (5), `enforceRateLimit` (4), and `RATE_LIMITS` presets (2). Fixed maritime route test to pass Request arg.
+- **Created `TASK.md`**: Prioritized backlog of remaining work items.
+
+**Quality gates:** lint ✅ (zero warnings) | typecheck ✅ | build ✅ | 585 tests / 56 files ✅
+
+### Gaps closed
+- ~~MEDIUM: Feed routes have no per-route rate limiting~~ → **17 routes rate-limited**
+- Test count: 569 → **585** (+16)
+- Test files: 55 → **56** (+1)
+- New TASK.md with prioritized backlog
+
+---
+
 ## 2026-05-28 (session 10) — SSRF Host-Pinning (DNS Rebinding Mitigation)
 
 ### Task: Implement socket-level IP pinning for safeFetch (AUDIT.md Rec #1)

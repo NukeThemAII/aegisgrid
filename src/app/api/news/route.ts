@@ -1,5 +1,6 @@
 
 import { NextResponse } from 'next/server';
+import { enforceRateLimit, RATE_LIMITS } from '@/lib/rate-limit';
 
 /**
  * AEGISGRID — News Intelligence API
@@ -107,7 +108,9 @@ function parseRSSItems(xml: string): RssItem[] {
   return items;
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  const rateLimitResponse = enforceRateLimit(RATE_LIMITS['news'], request);
+  if (rateLimitResponse) return rateLimitResponse;
   try {
     // Fetch all feeds in parallel
     const feedPromises = Object.entries(FEEDS).map(async ([source, url]) => {

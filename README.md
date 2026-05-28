@@ -436,10 +436,13 @@ npm run build  # full Next.js production build
 - [x] Content Security Policy (CSP) & strict security headers
 - [x] Type tightening + strict backend endpoint types + unit test coverage
 
+- [x] SSRF host-pinning (DNS rebinding mitigation via undici Agent socket-level IP pinning)
+- [x] Feed route per-route rate limiting (17 routes with 429/Retry-After, 20 preset configs)
+
 ### Up next
+- [ ] Scanner response sanitization (response field allowlisting for proxied scanner backend)
 - [ ] Redis job queue and background feed refresh workers
 - [ ] Lawful radiosonde (balloons) source adapter
-- [x] Radiation monitoring adapter (Safecast CC0 public API) with age-classification, GeoJSON, graceful degradation
 - [ ] Expanded AIS maritime tracking
 - [ ] Comms/collaboration features
 

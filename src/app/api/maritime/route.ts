@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { enforceRateLimit, RATE_LIMITS } from '@/lib/rate-limit';
 
 /**
  * AEGISGRID — Maritime Intelligence
@@ -66,7 +67,9 @@ const CHOKEPOINTS = [
   { name: 'Lombok Strait', lat: -8.47, lng: 115.72, traffic: 'Alt Malacca', risk: 'LOW' },
 ];
 
-export async function GET() {
+export async function GET(request: Request) {
+  const rateLimitResponse = enforceRateLimit(RATE_LIMITS['maritime'], request);
+  if (rateLimitResponse) return rateLimitResponse;
   const timestamp = new Date().toISOString();
   const aisConfigured = Boolean(process.env.AISSTREAM_API_KEY?.trim());
 

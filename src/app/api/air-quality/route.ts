@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { enforceRateLimit, RATE_LIMITS } from '@/lib/rate-limit';
 
 /**
  * AEGISGRID — Air Quality Monitoring API
@@ -28,7 +29,9 @@ interface AirQualityStation {
   lastUpdated: string;
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  const rateLimitResponse = enforceRateLimit(RATE_LIMITS['air-quality'], request);
+  if (rateLimitResponse) return rateLimitResponse;
   try {
     // OpenAQ v2 — get latest measurements globally
     // We request PM2.5 (most health-relevant) with coordinates

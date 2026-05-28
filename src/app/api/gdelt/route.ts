@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { enforceRateLimit, RATE_LIMITS } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -71,7 +72,9 @@ const GEO_DICT: Record<string, [number, number]> = {
 
 const CONFLICT_KEYWORDS = ['attack', 'strike', 'missile', 'drone', 'war', 'troops', 'military', 'protest', 'riot', 'police', 'clash', 'bomb', 'killed', 'forces'];
 
-export async function GET() {
+export async function GET(request: Request) {
+  const rateLimitResponse = enforceRateLimit(RATE_LIMITS['gdelt'], request);
+  if (rateLimitResponse) return rateLimitResponse;
   try {
     const allEvents: GdeltEvent[] = [];
     let eventId = 0;
