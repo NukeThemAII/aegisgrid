@@ -16,8 +16,9 @@ describe('AI report generator', () => {
     const { parseReportRequest } = await import('./report-generator');
 
     expect(parseReportRequest({ topic: 'Strait of Hormuz', region: 'Gulf', sources: [] }).ok).toBe(true);
-    expect(parseReportRequest({ topic: '', sources: [] })).toMatchObject({ ok: false, code: 'INVALID_TOPIC' });
-    expect(parseReportRequest({ topic: 'x'.repeat(181), sources: [] })).toMatchObject({ ok: false, code: 'INVALID_TOPIC' });
+    expect(parseReportRequest({ topic: '', sources: [] })).toMatchObject({ ok: true }); // auto-generates topic from empty
+    expect(parseReportRequest({ topic: 'x'.repeat(181), sources: [] })).toMatchObject({ ok: true }); // auto-truncates to 180
+    expect(parseReportRequest({ sources: [] })).toMatchObject({ ok: true }); // auto-generates topic
     expect(parseReportRequest({ topic: 'Valid', sources: [{ title: 'Bad', summary: '<script>alert(1)</script>'.repeat(80) }] }).ok).toBe(true);
   });
 

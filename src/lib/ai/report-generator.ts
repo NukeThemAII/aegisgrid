@@ -93,10 +93,21 @@ export function parseReportRequest(input: unknown): ReportParseResult {
     return { ok: false, code: 'INVALID_TOPIC', error: 'Report request must be a JSON object.' };
   }
 
-  const topic = cleanText(input.topic, 181);
-  if (!topic || topic.length > 180) {
-    return { ok: false, code: 'INVALID_TOPIC', error: 'topic must be 1-180 characters.' };
+  // Auto-generate topic from report type if no explicit topic provided
+  const typeMap: Record<string, string> = {
+    situational_briefing: 'Situational Intelligence Briefing',
+    threat_assessment: 'Threat Assessment Report',
+    regional_analysis: 'Regional Analysis',
+    sensor_summary: 'Sensor Network Summary',
+    custom: 'Custom Intelligence Report',
+  };
+  let topic = cleanText(input.topic, 181);
+  if (!topic && typeof input.type === 'string') {
+    topic = typeMap[input.type] || `AegisGrid ${input.type.replace(/_/g, ' ')}`;
   }
+  if (!topic) topic = 'AegisGrid Intelligence Report';
+  if (topic.length > 180) topic = topic.slice(0, 180);
+  if (topic.length < 1) topic = 'AegisGrid Intelligence Report';
 
   const rawSources = Array.isArray(input.sources) ? input.sources.slice(0, 12) : [];
   const sources = rawSources

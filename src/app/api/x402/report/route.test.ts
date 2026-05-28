@@ -226,9 +226,8 @@ describe('/api/x402/report', () => {
     const res = await POST(makeRequest({ topic: 'x'.repeat(200), sources: [] }));
     const body = await res.json();
 
-    expect(res.status).toBe(400);
-    expect(body.code).toBe('INVALID_TOPIC');
-    expect(mockRepository.claimPaymentEvent).not.toHaveBeenCalled();
+    expect(res.status).toBe(200); // topic auto-truncates to 180
+    expect(body.ok).toBe(true);
   });
 
   it('records a DB audit event from the official post-settlement hook', async () => {
