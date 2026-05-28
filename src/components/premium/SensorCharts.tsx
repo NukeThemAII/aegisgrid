@@ -10,6 +10,8 @@ interface SensorData {
   fires: number;
   threats: number;
   spaceEvents: number;
+  flights: number;
+  satellites: number;
 }
 
 const COLORS = ['#D4AF37', '#FF3D3D', '#FF9500', '#00E5FF', '#76FF03'];
