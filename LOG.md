@@ -4,6 +4,26 @@
 
 ---
 
+## 2026-05-28 (session 4) — OSINT Route Tests (Part 1)
+
+### Task: OSINT routes test coverage (20 tests added)
+
+| Route | Tests | Coverage |
+|-------|-------|----------|
+| `/api/osint/ip` | 6 | Format validation (v4/v6), octet range checks, successful geolocation mapping, reputation calculation, upstream error handling. |
+| `/api/osint/dns` | 4 | Domain validation, proper aggregation of multiple record types (A, AAAA, MX, NS, TXT, CNAME, SOA), upstream timeout handling. |
+| `/api/osint/bgp` | 6 | Validation, IP-to-ASN lookup, ASN prefix/peers lookup mapping, proper mock isolation. |
+| `/api/osint/whois` | 4 | Domain validation, RDAP aggregation (events, entities, nameservers), HTTP header security grading (HSTS, CSP, etc.), combined upstream error swallowing. |
+
+**Quality gates:** lint ✅ | typecheck ✅ | 522 tests / 50 files ✅ | build ✅
+
+### Gaps closed
+- OSINT route tests (4 out of 8 completed)
+- Test count: 502 → **522** (+20)
+- Test files: 46 → **50** (+4)
+
+---
+
 ## 2026-05-28 (session 3) — Zod Environment Validation
 
 ### Task: env.ts + env.test.ts (30 tests added)
