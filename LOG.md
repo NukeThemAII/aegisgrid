@@ -4,6 +4,19 @@
 
 ---
 
+## 2026-05-28 (session 8) — Prisma Database Schema
+
+### Task: Database Foundation & Schema Implementation
+- **Installed Prisma ORM**: Dropped in `@prisma/client`, `prisma`, and `@auth/prisma-adapter` via v5.22.0 to ensure Next.js 16/React 19 ecosystem compatibility.
+- **Created Schema**: Defined `prisma/schema.prisma` matching the exact specifications in `AGENTS.md`. This includes:
+  - **Auth.js Requirements**: `Account`, `Session`, `User`, `VerificationToken`.
+  - **AegisGrid Business Logic**: `Entitlement`, `CreditLedger`, `Report`, `ScanJob`.
+- **Created Prisma Singleton**: Configured `src/lib/db/index.ts` to reuse the Prisma client connection in serverless development environments preventing max connection limits.
+- **Integrated with NextAuth**: Connected `PrismaAdapter` to Auth.js inside `src/auth.ts`.
+- **Quality Gates**: `npx prisma generate` works seamlessly, and `npm run build` succeeds completely.
+
+---
+
 ## 2026-05-28 (session 7) — OAuth Layer Implementation
 
 ### Task: NextAuth (Auth.js v5) Integration
