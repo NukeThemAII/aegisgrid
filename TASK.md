@@ -14,7 +14,7 @@ Users can't see or access premium features.
 (Stripe checkout/portal), AI report generation, x402 pay-per-use info.
 Wire into desktop sidebar.
 **Estimate:** ~1.5h.
-**Done:** commit `(pending)` — PremiumPanel.tsx created and wired into page.tsx.
+**Done:** commit `fc36f78` — PremiumPanel.tsx created and wired into page.tsx.
 
 ### 2. [ ] Scanner response sanitization
 **Why:** MEDIUM gap. Scanner proxy responses from external backend pass through
