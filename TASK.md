@@ -29,7 +29,7 @@ inject unexpected fields into the public API response.
 **Scope:** Add response shape validation + field allowlisting in
 `src/app/api/scanner/route.ts`. Tests for field stripping.
 **Estimate:** ~1h.
-**Done:** commit `(pending)` — sanitizeScannerResponse with top-level allowlist, depth enforcement, 5 tests.
+**Done:** commit `b8852fe` — sanitizeScannerResponse with top-level allowlist, depth enforcement, 5 tests.
 
 ### 3. [ ] CSRF protection for state-changing routes
 **Why:** MEDIUM gap. Routes like `/api/billing/checkout`, `/api/billing/portal`,
