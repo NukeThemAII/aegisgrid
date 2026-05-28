@@ -41,6 +41,8 @@ export default function SensorCharts() {
           fires: fires.fires?.length || 0,
           threats: threats.threats?.length || threats.indicators?.length || 0,
           spaceEvents: sw.events?.length || 0,
+          flights: 0,
+          satellites: 0,
         });
       } catch { /* feeds unavailable */ }
       finally { setLoading(false); }
