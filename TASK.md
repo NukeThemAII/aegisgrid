@@ -30,10 +30,10 @@ reduce upstream API load, and improve response times.
 
 ## MEDIUM
 
+- [x] Component directory reorganization (map/panels/ui subdirs) — `54f1dd4`
+- [ ] Remove duplicate docker-compose files — done
 - [ ] Expanded AIS maritime tracking (aisstream.io WebSocket worker)
 - [ ] Comms/collaboration features (needs decomposition first)
-- [ ] Component directory reorganization (map/panels/billing/reports/ui)
-- [ ] Remove duplicate docker-compose files
 
 ## LOW
 
