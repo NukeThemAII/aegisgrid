@@ -431,14 +431,16 @@ npm run build  # full Next.js production build
 - [x] AIS readiness metadata in maritime route without fake live vessel telemetry
 - [x] External AI report provider abstraction (deterministic/OpenAI/Hermes) with prompt-injection controls, citation validation, fail-closed response parsing, and sanitized output
 - [x] Deployment scaffolding: Docker Compose, systemd unit, nginx reverse proxy config
+- [x] OAuth layer (GitHub/Google Auth.js integration)
+- [x] Prisma Database Schema & Singleton implementation
+- [x] Content Security Policy (CSP) & strict security headers
+- [x] Type tightening + strict backend endpoint types + unit test coverage
 
 ### Up next
-- [ ] OAuth layer (GitHub/Google Auth.js or equivalent)
 - [ ] Redis job queue and background feed refresh workers
 - [ ] Lawful radiosonde (balloons) source adapter
 - [ ] Radiation monitoring adapter (Safecast / EU networks)
 - [ ] Expanded AIS maritime tracking
-- [ ] Type tightening + unit test coverage
 - [ ] Comms/collaboration features
 
 > Completed items are foundation scaffolds, not full commercial production systems.

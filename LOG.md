@@ -4,6 +4,15 @@
 
 ---
 
+## 2026-05-28 (session 9) — Security Headers & Roadmap Update
+
+### Task: Implement CSP & Refresh Documentation
+- **Security Headers**: Added strict `Content-Security-Policy` to `next.config.ts`, along with `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, and `Permissions-Policy`.
+- **Allowed Origins**: Configured CSP to explicitly allow critical external sources like Google Fonts, YouTube (for comms streams), and Vercel Analytics, while maintaining a strict `default-src 'self'`.
+- **Roadmap Updated**: Updated `README.md` to move "Type tightening", "OAuth layer", and "Database Schema/CSP" into the Completed section.
+
+---
+
 ## 2026-05-28 (session 8) — Prisma Database Schema
 
 ### Task: Database Foundation & Schema Implementation
