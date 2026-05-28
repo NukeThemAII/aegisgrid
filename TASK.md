@@ -45,7 +45,7 @@ charts/pies from live OSINT feeds, payment integration, and zero clutter.
 
 - [ ] AIS maritime tracking
 - [ ] Comms/collaboration features
-- [ ] pino structured logging
+- [x] pino structured logging
 - [ ] OsintPanel refactor (825-line monolith)
 - [ ] CSP nonces (AUDIT.md Rec #2)
 - [ ] DB audit trails (AUDIT.md Rec #3)
