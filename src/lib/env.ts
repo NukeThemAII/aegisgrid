@@ -59,7 +59,7 @@ const envSchema = z.object({
   FEATURE_X402: boolFlag,
 
   // ── AI ──
-  AI_PROVIDER: z.enum(['none', 'deterministic', 'openai', 'hermes']).optional().default('none'),
+  AI_PROVIDER: z.enum(['none', 'deterministic', 'openai', 'deepseek', 'gemini', 'hermes']).optional().default('none'),
   AI_MODEL_REPORTS: optionalTrimmed,
   OPENAI_API_KEY: optionalTrimmed,
   HERMES_API_KEY: optionalTrimmed,

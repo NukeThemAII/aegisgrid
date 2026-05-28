@@ -31,6 +31,8 @@ export async function GET() {
     process.env.FEATURE_AI_REPORTS === 'true' && (
       process.env.AI_PROVIDER === 'deterministic' ||
       (process.env.AI_PROVIDER === 'openai' && process.env.OPENAI_API_KEY) ||
+      (process.env.AI_PROVIDER === 'deepseek' && process.env.DEEPSEEK_API_KEY) ||
+      (process.env.AI_PROVIDER === 'gemini' && process.env.GEMINI_API_KEY) ||
       (process.env.AI_PROVIDER === 'hermes' && process.env.HERMES_API_KEY && process.env.HERMES_API_URL)
     ),
   );

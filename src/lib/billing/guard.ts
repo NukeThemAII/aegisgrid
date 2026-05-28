@@ -29,9 +29,8 @@ function hasEntitlement(subject: AppSubject, capability: PremiumCapability): boo
 }
 
 function staticFallbackAllowed(): boolean {
-  if (process.env.NODE_ENV === 'production') return false;
-  if (!isDatabaseConfigured()) return true;
-  return process.env.AUTH_STATIC_ENTITLEMENTS_FALLBACK === 'true';
+  if (!isDatabaseConfigured() && process.env.AUTH_STATIC_ENTITLEMENTS_FALLBACK === 'true') return true;
+  return false;
 }
 
 function databaseRepository(options: PremiumAccessOptions): Pick<AppRepository, 'findActiveEntitlement'> | null {

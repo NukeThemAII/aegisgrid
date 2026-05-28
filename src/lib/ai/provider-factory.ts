@@ -66,12 +66,49 @@ export function createReportProvider(
           error: 'AI_PROVIDER=openai requires OPENAI_API_KEY to be set.',
         };
       }
+      const customBaseUrl = parseSafeBaseUrl(process.env.OPENAI_BASE_URL);
       return {
         ok: true,
         provider: new OpenAIReportProvider({
           apiKey,
           model: process.env.AI_MODEL_REPORTS?.trim() || DEFAULT_OPENAI_MODEL,
-          baseUrl: DEFAULT_OPENAI_BASE_URL,
+          baseUrl: customBaseUrl || DEFAULT_OPENAI_BASE_URL,
+          fetch: fetchFn,
+          maxTokens: 4096,
+          timeoutMs: 60_000,
+        }),
+      };
+    }
+
+    case 'deepseek': {
+      const apiKey = process.env.DEEPSEEK_API_KEY?.trim();
+      if (!apiKey) {
+        return { ok: false, code: 'PROVIDER_NOT_CONFIGURED', error: 'AI_PROVIDER=deepseek requires DEEPSEEK_API_KEY.' };
+      }
+      return {
+        ok: true,
+        provider: new OpenAIReportProvider({
+          apiKey,
+          model: process.env.AI_MODEL_REPORTS?.trim() || 'deepseek-chat',
+          baseUrl: 'https://api.deepseek.com/v1',
+          fetch: fetchFn,
+          maxTokens: 4096,
+          timeoutMs: 60_000,
+        }),
+      };
+    }
+
+    case 'gemini': {
+      const apiKey = process.env.GEMINI_API_KEY?.trim();
+      if (!apiKey) {
+        return { ok: false, code: 'PROVIDER_NOT_CONFIGURED', error: 'AI_PROVIDER=gemini requires GEMINI_API_KEY.' };
+      }
+      return {
+        ok: true,
+        provider: new OpenAIReportProvider({
+          apiKey,
+          model: process.env.AI_MODEL_REPORTS?.trim() || 'gemini-2.5-flash',
+          baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai',
           fetch: fetchFn,
           maxTokens: 4096,
           timeoutMs: 60_000,
@@ -115,7 +152,7 @@ export function createReportProvider(
       return {
         ok: false,
         code: 'PROVIDER_NOT_CONFIGURED',
-        error: `AI_PROVIDER="${providerName || 'none'}" is not a configured provider. Use deterministic, openai, or hermes.`,
+        error: `AI_PROVIDER="${providerName || 'none'}" is not configured. Use deterministic, openai, deepseek, gemini, or hermes.`,
       };
   }
 }
