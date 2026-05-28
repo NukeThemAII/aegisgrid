@@ -4,6 +4,27 @@
 
 ---
 
+## 2026-05-28 (session 3) — Zod Environment Validation
+
+### Task: env.ts + env.test.ts (30 tests added)
+
+| Component | Coverage |
+|-----------|----------|
+| `envSchema` | Zod schema for all 54+ environment variables across App, DB, Redis, Auth, Features, AI, Scanner, Stripe, x402, Optional APIs. |
+| `parseEnv` | Caching, overriding for tests, validation errors formatting. |
+| Derived helpers | `isProduction`, `isDatabaseConfigured`, `isRedisConfigured`, `isStripeFullyConfigured`, `isX402Configured`, `isScannerProxyConfigured`, `aiProviderName`. |
+| Tests | 30 tests covering defaults, booleans, enums, cache invalidation. |
+
+**Quality gates:** lint ✅ | typecheck ✅ | 502 tests / 46 files ✅ | build ✅
+
+### Gaps closed
+- ~~No `env.ts` — centralized environment validation missing~~ → **DONE**
+- ~~Zod not even installed~~ → **Installed**
+- Test count: 472 → **502** (+30)
+- Test files: 45 → **46** (+1)
+
+---
+
 ## 2026-05-28 (session 2) — ssrf-guard Test Coverage
 
 ### Task: ssrf-guard.test.ts (55 tests added)
