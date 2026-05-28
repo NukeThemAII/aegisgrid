@@ -6,15 +6,9 @@ import type { NextRequest } from 'next/server';
  *
  * Next.js 16 uses `proxy.ts` instead of the legacy `middleware.ts`.
  * This module handles:
- *  1. Security headers on ALL responses (pages + API).
- *  2. Rate limiting for /api/* routes.
- *
- * NOTE — Content-Security-Policy is intentionally deferred.
- * The app relies on MapLibre GL (WebGL, blob:, data:, tile servers),
- * YouTube embeds, HLS.js streams, external fonts (fonts.googleapis.com,
- * fonts.gstatic.com), and Vercel Analytics. A correct CSP policy
- * requires auditing every external origin the client loads. This will
- * be addressed in a dedicated hardening pass (see AGENTS.md §15).
+ *  1. CSRF protection for state-changing API routes.
+ *  2. Security headers on ALL responses (pages + API).
+ *  3. Rate limiting for /api/* routes.
  */
 
 // ── Rate Limiting ───────────────────────────────────────────────
@@ -26,6 +20,59 @@ const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
 
 const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
 const MAX_REQUESTS_PER_WINDOW = 100;
+
+// ── CSRF Protection ──────────────────────────────────────────────
+
+/** Paths exempt from CSRF — webhooks and auth callbacks. */
+const CSRF_EXEMPT_PREFIXES = [
+  '/api/billing/webhook',  // Stripe signature verification
+  '/api/x402/report',      // x402 protocol settlement
+  '/api/x402/enrich',      // x402 protocol settlement
+  '/api/auth',             // Auth.js handles its own CSRF
+];
+
+function isCsrfExempt(pathname: string): boolean {
+  return CSRF_EXEMPT_PREFIXES.some(prefix => pathname.startsWith(prefix));
+}
+
+/** Validate Origin/Referer for state-changing requests. */
+function validateCsrf(request: NextRequest): { allowed: boolean; reason?: string } {
+  const method = request.method.toUpperCase();
+  if (method === 'GET' || method === 'HEAD' || method === 'OPTIONS') {
+    return { allowed: true };
+  }
+
+  const origin = request.headers.get('origin');
+  const referer = request.headers.get('referer');
+
+  // Allow same-origin requests (Origin matches our app URL)
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+  const allowedOrigins = [appUrl, 'http://94.16.122.69:3004', 'http://94.16.122.69:3000'];
+
+  const checkOrigin = (val: string | null): boolean => {
+    if (!val) return false;
+    try {
+      const u = new URL(val);
+      const base = `${u.protocol}//${u.host}`;
+      return allowedOrigins.some(a => a.replace(/\/$/, '') === base.replace(/\/$/, ''));
+    } catch { return false; }
+  };
+
+  if (origin && checkOrigin(origin)) return { allowed: true };
+  if (referer && checkOrigin(referer)) return { allowed: true };
+
+  // Server-to-server requests (no Origin/Referer, JSON content-type): allow
+  const contentType = request.headers.get('content-type') || '';
+  if (!origin && !referer && contentType.includes('application/json')) {
+    return { allowed: true };
+  }
+
+  // No Origin, no Referer, not JSON — block form-encoded CSRF attempts
+  return {
+    allowed: false,
+    reason: 'CSRF validation failed. Use the application UI to make state-changing requests.',
+  };
+}
 
 // ── Security Headers ────────────────────────────────────────────
 
@@ -72,6 +119,19 @@ export function proxy(request: NextRequest) {
   }
 
   // ── API Rate Limiting ──
+  // CSRF check for state-changing methods (before rate limit)
+  if (!isCsrfExempt(request.nextUrl.pathname)) {
+    const csrf = validateCsrf(request);
+    if (!csrf.allowed) {
+      const response = new NextResponse(
+        JSON.stringify({ error: 'csrf_validation_failed', message: csrf.reason }),
+        { status: 403, headers: { 'Content-Type': 'application/json' } },
+      );
+      applySecurityHeaders(response, request);
+      return response;
+    }
+  }
+
   // Use proxy-provided headers when deployed behind Vercel or another trusted
   // reverse proxy. Local/custom deployments fall back to `unknown`.
   const forwarded = request.headers.get('x-forwarded-for');
