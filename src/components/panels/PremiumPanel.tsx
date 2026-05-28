@@ -34,6 +34,8 @@ export default function PremiumPanel() {
   const [managingBilling, setManagingBilling] = useState(false);
   const [showSetup, setShowSetup] = useState(false);
   const [tokenInput, setTokenInput] = useState('');
+  const [reportContent, setReportContent] = useState<string | null>(null);
+  const [generating, setGenerating] = useState(false);
 
   const fetchAll = useCallback(async () => {
     try {
@@ -94,6 +96,9 @@ export default function PremiumPanel() {
   };
 
   const handleAiReport = async () => {
+    setGenerating(true);
+    setError(null);
+    setReportContent(null);
     try {
       const token = localStorage.getItem('aegisgrid_token');
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -105,13 +110,14 @@ export default function PremiumPanel() {
       });
       const data = await res.json();
       if (data.report?.markdown) {
-        const blob = new Blob([data.report.markdown], { type: 'text/markdown' });
-        window.open(URL.createObjectURL(blob), '_blank');
+        setReportContent(data.report.markdown);
       } else {
-        setError(data.error || 'Report generation failed');
+        setError(data.error || data.message || 'Report generation failed');
       }
-    } catch {
-      setError('Report request failed');
+    } catch (e: any) {
+      setError(e.message || 'Network error');
+    } finally {
+      setGenerating(false);
     }
   };
 
@@ -299,10 +305,10 @@ export default function PremiumPanel() {
                   <p className="text-[9px] font-mono text-[var(--text-muted)] leading-relaxed">
                     Situational-intelligence report from live feeds with citations.
                   </p>
-                  <button onClick={handleAiReport} disabled={!(hasEntitlement('ai_reports') || isPro)}
+                  <button onClick={handleAiReport} disabled={!(hasEntitlement('ai_reports') || isPro) || generating}
                     className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded text-[10px] font-mono font-bold tracking-wider bg-[var(--cyan-primary)]/20 text-[var(--cyan-primary)] border border-[var(--cyan-primary)]/30 hover:bg-[var(--cyan-primary)]/30 disabled:opacity-30 disabled:cursor-not-allowed transition-all">
-                    <Zap size={12} />
-                    GENERATE REPORT
+                    {generating ? <Loader2 size={12} className="animate-spin" /> : <Zap size={12} />}
+                    {generating ? 'GENERATING...' : 'GENERATE REPORT'}
                   </button>
                 </>
               ) : (
@@ -311,6 +317,32 @@ export default function PremiumPanel() {
                 </p>
               )}
             </div>
+
+            {/* ── Generated Report Display ── */}
+            {reportContent && (
+              <div className="rounded-lg border border-[var(--cyan-primary)]/30 bg-black/60 p-3 max-h-[300px] overflow-y-auto styled-scrollbar">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[9px] font-mono text-[var(--cyan-primary)] tracking-widest">REPORT PREVIEW</span>
+                  <button onClick={() => setReportContent(null)} className="text-[var(--text-muted)] hover:text-white text-[10px]">✕</button>
+                </div>
+                <pre className="text-[9px] font-mono text-[var(--text-primary)] whitespace-pre-wrap leading-relaxed">
+                  {reportContent.slice(0, 2000)}
+                  {reportContent.length > 2000 && '\n\n... (truncated — full report available via API)'}
+                </pre>
+                <button
+                  onClick={() => {
+                    const blob = new Blob([reportContent], { type: 'text/markdown' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url; a.download = 'aegisgrid-report.md'; a.click();
+                    URL.revokeObjectURL(url);
+                  }}
+                  className="mt-2 w-full text-[9px] font-mono text-[var(--gold-primary)] hover:underline text-center"
+                >
+                  DOWNLOAD FULL REPORT (.md)
+                </button>
+              </div>
+            )}
 
             {/* ── x402 USDC ── */}
             <div className={`rounded-lg border p-3 space-y-2 ${x402Ready ? 'border-purple-500/30' : 'border-[var(--border-primary)] opacity-60'}`}>
