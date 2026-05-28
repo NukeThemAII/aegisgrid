@@ -4,12 +4,10 @@
  * Fetches radiation measurements from the Safecast API (CC0 public domain).
  * https://api.safecast.org/
  *
- * The Safecast API returns CPM (counts per minute) readings from community
- * and professional radiation monitoring devices. No API key is required.
- *
- * IMPORTANT: Safecast data may be days/weeks old. This is NOT real-time
- * radiation monitoring — treat as historical reference only.
+ * No API key required. Data may be days/weeks old — NOT real-time.
  */
+
+import { logger } from '@/lib/logging';
 
 export interface SourceMeta {
   source: string;
@@ -19,8 +17,6 @@ export interface SourceMeta {
   attribution?: string;
   confidence?: 'low' | 'medium' | 'high';
 }
-
-// ── Safecast API types ──────────────────────────────────────────────
 
 interface SafecastMeasurement {
   id: number;
@@ -40,24 +36,15 @@ interface SafecastMeasurement {
   longitude: number;
 }
 
-// ── Normalized output types ─────────────────────────────────────────
-
 export interface NormalizedRadiationStation {
-  /** Safecast measurement ID */
   id: number;
   lat: number;
   lng: number;
-  /** Human-readable label; falls back to measurement ID */
   name: string;
-  /** Radiation reading in CPM */
   reading: number;
-  /** Unit of measurement (typically 'cpm') */
   unit: string;
-  /** UTC timestamp of the measurement */
   capturedAt: string;
-  /** Age category for display purposes */
   status: 'recent' | 'stale' | 'archived';
-  /** Source network label */
   network: 'Safecast';
 }
 
@@ -67,18 +54,13 @@ export interface SafecastResponse {
   source: SourceMeta;
 }
 
-// ── Constants ───────────────────────────────────────────────────────
-
 const SAFECAST_API = 'https://api.safecast.org/measurements.json';
 const SAFECAST_SOURCE_URL = 'https://api.safecast.org/';
 const SAFECAST_LICENSE = 'CC0-1.0 (public domain dedication)';
 const SAFECAST_ATTRIBUTION = 'Safecast (https://safecast.org)';
 
-/** Measurements older than this are marked 'archived' */
-const FRESH_THRESHOLD_MS = 24 * 60 * 60 * 1000;      // 24 hours
-const STALE_THRESHOLD_MS  = 7 * 24 * 60 * 60 * 1000;  // 7 days
-
-// ── Helpers ─────────────────────────────────────────────────────────
+const FRESH_THRESHOLD_MS = 24 * 60 * 60 * 1000;
+const STALE_THRESHOLD_MS = 7 * 24 * 60 * 60 * 1000;
 
 function ageStatus(capturedAt: string): NormalizedRadiationStation['status'] {
   const age = Date.now() - new Date(capturedAt).getTime();
@@ -93,17 +75,8 @@ function stationName(m: SafecastMeasurement): string {
   return `Measurement ${m.id}`;
 }
 
-// ── Public API ──────────────────────────────────────────────────────
-
-/**
- * Fetch recent Safecast radiation measurements and normalize them.
- * Returns up to `limit` results ordered by most recent first.
- */
-export async function fetchRadiationStations(
-  limit: number = 200,
-): Promise<SafecastResponse> {
+export async function fetchRadiationStations(limit: number = 200): Promise<SafecastResponse> {
   const fetchedAt = new Date().toISOString();
-
   const source: SourceMeta = {
     source: 'Safecast',
     source_url: SAFECAST_SOURCE_URL,
@@ -120,15 +93,10 @@ export async function fetchRadiationStations(
       headers: { Accept: 'application/json' },
     });
 
-    if (!res.ok) {
-      return { stations: [], total: 0, source };
-    }
+    if (!res.ok) return { stations: [], total: 0, source };
 
     const raw: SafecastMeasurement[] = await res.json();
-
-    if (!Array.isArray(raw)) {
-      return { stations: [], total: 0, source };
-    }
+    if (!Array.isArray(raw)) return { stations: [], total: 0, source };
 
     const stations: NormalizedRadiationStation[] = raw.map((m) => ({
       id: m.id,
@@ -144,7 +112,7 @@ export async function fetchRadiationStations(
 
     return { stations, total: stations.length, source };
   } catch (error) {
-    console.error('[AEGISGRID] Safecast fetch error:', error);
+    logger.error({ err: error }, 'Safecast fetch error');
     return { stations: [], total: 0, source };
   }
 }
