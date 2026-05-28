@@ -13,7 +13,25 @@
 
 ---
 
-## 2026-05-28 (session 8) — Prisma Database Schema
+## 2026-05-28 (session 9) — Radiation Monitoring Adapter (Safecast)
+
+### Task: Replace radiation placeholder with real Safecast data pipeline
+
+- **Created Safecast adapter** (`src/lib/adapters/safecast.ts`): Typed adapter for `https://api.safecast.org/measurements.json` with `SourceMeta` contract, CPM-to-normalized-station mapping, age classification (recent/stale/archived), and graceful error handling.
+- **Rewrote radiation route** (`src/app/api/radiation/route.ts`): Now fetches real Safecast measurements, returns normalized `stations` + GeoJSON `featureCollection` + source metadata. Falls back to `source_degraded` on upstream failure.
+- **Tests**: 7 tests for the radiation route (success paths, network errors, non-200 responses, non-array responses, GeoJSON structure, Cache-Control header, secret leakage prevention).
+- **Updated geosensors test**: Replaced placeholder assertion with mock-backed Safecast integration test.
+- **Updated docs/sources.md**: Marked Safecast as active source with CC0-1.0 license.
+
+**Quality gates:** lint ✅ (zero warnings) | typecheck ✅ | build ✅ | 560 tests / 55 files ✅
+
+### Gaps closed
+- ~~Radiation placeholder~~ → **Safecast adapter live**
+- Test count: 553 → **560** (+7)
+- Test files: 54 → **55** (+1)
+
+---
+
 
 ### Task: Database Foundation & Schema Implementation
 - **Installed Prisma ORM**: Dropped in `@prisma/client`, `prisma`, and `@auth/prisma-adapter` via v5.22.0 to ensure Next.js 16/React 19 ecosystem compatibility.

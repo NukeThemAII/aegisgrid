@@ -439,7 +439,7 @@ npm run build  # full Next.js production build
 ### Up next
 - [ ] Redis job queue and background feed refresh workers
 - [ ] Lawful radiosonde (balloons) source adapter
-- [ ] Radiation monitoring adapter (Safecast / EU networks)
+- [x] Radiation monitoring adapter (Safecast CC0 public API) with age-classification, GeoJSON, graceful degradation
 - [ ] Expanded AIS maritime tracking
 - [ ] Comms/collaboration features
 

@@ -11,7 +11,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     Google,
   ],
   callbacks: {
-    authorized({ auth, request: { nextUrl } }) {
+    authorized({ auth: _auth, request: { nextUrl: _nextUrl } }) {
       // Basic role or auth guard logic could go here later.
       return true;
     },
