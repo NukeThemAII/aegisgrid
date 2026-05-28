@@ -9,6 +9,23 @@ export const dynamic = 'force-dynamic';
  * lightweight keyword geo-mapping to generate incident points.
  */
 
+interface GdeltEvent {
+  id: string;
+  lat: number;
+  lng: number;
+  name: string;
+  url: string;
+  html: string;
+  type: 'conflict';
+}
+
+/**
+ * AEGISGRID — Global Incidents API (GDELT Fallback / RSS OSINT Mapper)
+ * Since GDELT v2 Geo is frequently down (404/Timeout), this fallback
+ * aggregates global news RSS (BBC, Al Jazeera, etc.) and performs
+ * lightweight keyword geo-mapping to generate incident points.
+ */
+
 const RSS_FEEDS = [
   { url: 'https://feeds.bbci.co.uk/news/world/rss.xml', source: 'BBC World' },
   { url: 'https://www.aljazeera.com/xml/rss/all.xml', source: 'Al Jazeera' },
@@ -56,7 +73,7 @@ const CONFLICT_KEYWORDS = ['attack', 'strike', 'missile', 'drone', 'war', 'troop
 
 export async function GET() {
   try {
-    const allEvents: any[] = [];
+    const allEvents: GdeltEvent[] = [];
     let eventId = 0;
 
     for (const feed of RSS_FEEDS) {

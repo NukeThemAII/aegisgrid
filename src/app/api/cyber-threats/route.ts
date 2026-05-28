@@ -3,9 +3,40 @@ import { NextResponse } from 'next/server';
 // Cyber threat intelligence from public feeds
 // Inspired by WorldMonitor's infrastructure tracking
 
+interface CisaVulnerability {
+  cveID: string;
+  vulnerabilityName: string;
+  vendorProject: string;
+  product: string;
+  dateAdded: string;
+  dueDate: string;
+}
+
+interface CyberThreat {
+  id: string;
+  name: string;
+  vendor: string;
+  product: string;
+  severity: string;
+  date: string;
+  due: string;
+  source: string;
+}
+
+interface CyberThreatResult {
+  threats: CyberThreat[];
+  stats: {
+    cisa_total?: number;
+    shadowserver?: string;
+    active_cves?: number;
+    threat_level?: string;
+  };
+  timestamp: string;
+}
+
 export async function GET() {
   try {
-    const results: any = { threats: [], stats: {}, timestamp: new Date().toISOString() };
+    const results: CyberThreatResult = { threats: [], stats: {}, timestamp: new Date().toISOString() };
 
     // 1. CISA Known Exploited Vulnerabilities (authoritative US govt source)
     try {
@@ -15,13 +46,13 @@ export async function GET() {
       if (res.ok) {
         const data = await res.json();
         const recent = (data.vulnerabilities || [])
-          .filter((v: any) => {
+          .filter((v: CisaVulnerability) => {
             const added = new Date(v.dateAdded);
             const daysAgo = (Date.now() - added.getTime()) / (1000 * 60 * 60 * 24);
             return daysAgo <= 30;
           })
           .slice(0, 10)
-          .map((v: any) => ({
+          .map((v: CisaVulnerability) => ({
             id: v.cveID,
             name: v.vulnerabilityName,
             vendor: v.vendorProject,

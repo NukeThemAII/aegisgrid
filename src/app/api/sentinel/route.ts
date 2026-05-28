@@ -1,6 +1,46 @@
 import { NextResponse } from 'next/server';
 
 // Sentinel-1 SAR Satellite — STAC Catalog via Element84 Earth Search + Copernicus fallback
+
+interface StacFeature {
+  id: string;
+  bbox?: number[];
+  geometry?: { type: string };
+  properties?: {
+    datetime?: string;
+    platform?: string;
+    'sar:instrument_mode'?: string;
+    'sat:orbit_state'?: string;
+    orbitDirection?: string;
+    'sar:polarizations'?: string[];
+    polarisation?: string;
+    productType?: string;
+    'sar:resolution_range'?: number;
+    'sat:relative_orbit'?: number;
+    'eo:cloud_cover'?: number;
+  };
+  assets?: {
+    thumbnail?: { href: string };
+    preview?: { href: string };
+  };
+}
+
+interface SentinelScene {
+  id: string;
+  datetime: string | undefined;
+  platform: string;
+  orbit: string | undefined;
+  polarization: string[] | string | undefined;
+  mode: string | undefined;
+  resolution: number | null;
+  pass_direction: number | null;
+  cloud_cover: number | null;
+  bbox: number[] | undefined;
+  thumbnail: string | null;
+  preview: string | null;
+  geometry_type: string | undefined;
+  area_km2: number | null;
+}
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const lat = parseFloat(searchParams.get('lat') || '0');
@@ -18,7 +58,7 @@ export async function GET(req: Request) {
     const from = new Date(now.getTime() - days * 86400000);
     const datetime = `${from.toISOString().split('.')[0]}Z/${now.toISOString().split('.')[0]}Z`;
 
-    let scenes: any[] = [];
+    let scenes: SentinelScene[] = [];
     let source = '';
     let total = 0;
 
@@ -106,7 +146,7 @@ export async function GET(req: Request) {
   }
 }
 
-function formatScene(feature: any) {
+function formatScene(feature: StacFeature): SentinelScene {
   const props = feature.properties || {};
   return {
     id: feature.id,

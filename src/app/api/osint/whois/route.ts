@@ -1,6 +1,80 @@
 import { NextResponse } from 'next/server';
 import { safeFetch, isRateLimited, getClientIp } from '@/lib/ssrf-guard';
 
+// ── RDAP response types (subset of RFC 9083) ──
+
+interface RdapEvent {
+  eventAction: string;
+  eventDate: string;
+}
+
+interface RdapNameserver {
+  ldhName: string;
+}
+
+interface RdapVcardEntry extends Array<unknown> {
+  0: string;        // property name (e.g. 'fn', 'org')
+  1: unknown;       // parameters
+  2: string;        // type hint
+  3: string;        // value
+}
+
+interface RdapEntity {
+  handle?: string;
+  roles?: string[];
+  vcardArray?: [string, RdapVcardEntry[]];
+}
+
+interface RdapResponse {
+  handle?: string;
+  ldhName?: string;
+  status?: string[];
+  events?: RdapEvent[];
+  nameservers?: RdapNameserver[];
+  entities?: RdapEntity[];
+}
+
+// ── Normalised output types ──
+
+interface ParsedEvent {
+  action: string;
+  date: string;
+}
+
+interface ParsedEntity {
+  handle?: string;
+  roles?: string[];
+  name?: string;
+  org?: string;
+}
+
+interface WhoisResult {
+  domain: string;
+  timestamp: string;
+  rdap?: {
+    handle?: string;
+    name?: string;
+    status?: string[];
+    events: ParsedEvent[];
+    nameservers: string[];
+    entities: ParsedEntity[];
+  };
+  registration?: string;
+  expiration?: string;
+  last_changed?: string;
+  http?: {
+    status: number;
+    headers: Record<string, string>;
+    redirected: boolean;
+    final_url: string;
+  };
+  security_score?: {
+    score: number;
+    max: number;
+    grade: string;
+  };
+}
+
 // WHOIS + Domain Intelligence via RDAP (free, standardized)
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -17,7 +91,7 @@ export async function GET(req: Request) {
   }
 
   try {
-    const results: any = { domain, timestamp: new Date().toISOString() };
+    const results: WhoisResult = { domain, timestamp: new Date().toISOString() };
 
     // RDAP (Registration Data Access Protocol) — successor to WHOIS
     try {
@@ -26,29 +100,30 @@ export async function GET(req: Request) {
         headers: { 'Accept': 'application/json' },
       });
       if (res.ok) {
-        const data = await res.json();
+        const data = await res.json() as RdapResponse;
+        const events: ParsedEvent[] = (data.events || []).map((e) => ({
+          action: e.eventAction,
+          date: e.eventDate,
+        }));
+
         results.rdap = {
           handle: data.handle,
           name: data.ldhName,
           status: data.status,
-          events: (data.events || []).map((e: any) => ({
-            action: e.eventAction,
-            date: e.eventDate,
-          })),
-          nameservers: (data.nameservers || []).map((ns: any) => ns.ldhName),
-          entities: (data.entities || []).map((e: any) => ({
+          events,
+          nameservers: (data.nameservers || []).map((ns) => ns.ldhName),
+          entities: (data.entities || []).map((e) => ({
             handle: e.handle,
             roles: e.roles,
-            name: e.vcardArray?.[1]?.find((v: any) => v[0] === 'fn')?.[3],
-            org: e.vcardArray?.[1]?.find((v: any) => v[0] === 'org')?.[3],
-          })).filter((e: any) => e.name || e.org),
+            name: e.vcardArray?.[1]?.find((v) => v[0] === 'fn')?.[3] as string | undefined,
+            org: e.vcardArray?.[1]?.find((v) => v[0] === 'org')?.[3] as string | undefined,
+          })).filter((e) => e.name || e.org),
         };
 
         // Extract key dates
-        const events = results.rdap.events || [];
-        results.registration = events.find((e: any) => e.action === 'registration')?.date;
-        results.expiration = events.find((e: any) => e.action === 'expiration')?.date;
-        results.last_changed = events.find((e: any) => e.action === 'last changed')?.date;
+        results.registration = events.find((e) => e.action === 'registration')?.date;
+        results.expiration = events.find((e) => e.action === 'expiration')?.date;
+        results.last_changed = events.find((e) => e.action === 'last changed')?.date;
       }
     } catch (e) { console.warn('[AEGISGRID] Suppressed error:', e instanceof Error ? e.message : e); }
 

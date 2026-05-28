@@ -7,6 +7,14 @@ import { NextResponse } from 'next/server';
  * Risk scoring and geo-coordinate mapping
  */
 
+interface RssItem {
+  title: string;
+  link: string;
+  pubDate: string;
+  description: string;
+  source?: string;
+}
+
 const FEEDS: Record<string, string> = {
   BBC: 'https://feeds.bbci.co.uk/news/world/rss.xml',
   AlJazeera: 'https://www.aljazeera.com/xml/rss/all.xml',
@@ -77,8 +85,8 @@ function findCoords(text: string): [number, number] | null {
 // The risk_score field (from scoreRisk()) is deterministic and retained.
 
 // Simple XML parsing for RSS (no external dependency needed in serverless)
-function parseRSSItems(xml: string): any[] {
-  const items: any[] = [];
+function parseRSSItems(xml: string): RssItem[] {
+  const items: RssItem[] = [];
   const itemRegex = /<item>([\s\S]*?)<\/item>/gi;
   let match;
 
@@ -115,7 +123,7 @@ export async function GET() {
     });
 
     const feedResults = await Promise.allSettled(feedPromises);
-    const allArticles: any[] = [];
+    const allArticles: RssItem[] = [];
 
     for (const result of feedResults) {
       if (result.status === 'fulfilled') {
@@ -125,18 +133,22 @@ export async function GET() {
 
     // Score, classify, and sort
     const newsItems = allArticles.map(article => {
-      const riskScore = scoreRisk(article.title, article.description || '');
-      const keywordCoords = findCoords(article.title + ' ' + (article.description || ''));
-      const coords = keywordCoords ?? (BG_NEWS_SOURCES.has(article.source) ? SOFIA_COORDS : null);
+      const title = article.title || '';
+      const description = article.description || '';
+      const source = article.source || '';
+      
+      const riskScore = scoreRisk(title, description);
+      const keywordCoords = findCoords(title + ' ' + description);
+      const coords = keywordCoords ?? (BG_NEWS_SOURCES.has(source) ? SOFIA_COORDS : null);
 
       return {
-        title: article.title,
+        title,
         link: article.link,
         published: article.pubDate,
         source: article.source,
         risk_score: riskScore,
         coords: coords ? [coords[0], coords[1]] : null,
-        coords_default: !keywordCoords && BG_NEWS_SOURCES.has(article.source),
+        coords_default: !keywordCoords && BG_NEWS_SOURCES.has(source),
         machine_assessment: null,
       };
     });

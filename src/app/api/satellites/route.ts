@@ -7,6 +7,12 @@ import { NextResponse } from 'next/server';
  * Computes real-time positions using simplified SGP4
  */
 
+interface ParsedTle {
+  name: string;
+  line1: string;
+  line2: string;
+}
+
 // Mission classification by NORAD name keywords
 const MISSION_CLASSIFY: Record<string, { mission: string; color: string }> = {
   'USA': { mission: 'Military Recon', color: '#FF3D3D' },
@@ -58,7 +64,7 @@ function gmst(jd: number): number {
 
 function parseTLE(tleText: string) {
   const lines = tleText.trim().split('\n').map(l => l.trim()).filter(l => l.length > 0);
-  const satellites: any[] = [];
+  const satellites: ParsedTle[] = [];
 
   for (let i = 0; i < lines.length - 2; i++) {
     // Find name + line1 + line2 pattern
@@ -190,7 +196,7 @@ export async function GET() {
       TLE_SOURCES.map(src => fetchTLEFromSource(src))
     );
 
-    const allSats: any[] = [];
+    const allSats: ParsedTle[] = [];
     const seen = new Set<string>();
 
     for (const result of results) {

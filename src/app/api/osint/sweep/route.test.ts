@@ -181,14 +181,14 @@ describe('GET /api/osint/sweep', () => {
     expect(data.sweep_time_ms).toBeGreaterThanOrEqual(0);
 
     // Check device classification
-    const webServer = data.devices.find((d: any) => d.ip === '1.2.3.1');
+    const webServer = data.devices.find((d: { ip: string }) => d.ip === '1.2.3.1');
     expect(webServer.device_type).toBe('Web Server');
 
-    const linuxServer = data.devices.find((d: any) => d.ip === '1.2.3.2');
+    const linuxServer = data.devices.find((d: { ip: string }) => d.ip === '1.2.3.2');
     expect(linuxServer.device_type).toBe('Linux Server');
     expect(linuxServer.risk_level).toBe('HIGH'); // has vulns
 
-    const camera = data.devices.find((d: any) => d.ip === '1.2.3.3');
+    const camera = data.devices.find((d: { ip: string }) => d.ip === '1.2.3.3');
     expect(camera.device_type).toBe('Camera/DVR');
 
     // Device breakdown

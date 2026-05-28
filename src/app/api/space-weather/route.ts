@@ -8,6 +8,19 @@ import { NextResponse } from 'next/server';
  * Data: Kp index (geomagnetic), solar flares, CME alerts
  */
 
+interface SpaceWeatherAlert {
+  id: string;
+  issue_datetime: string;
+  message: string;
+}
+
+interface SolarFlare {
+  class: string;
+  begin: string;
+  peak: string;
+  end: string;
+}
+
 export async function GET() {
   try {
     const [kpRes, alertsRes, flareRes] = await Promise.allSettled([
@@ -42,7 +55,7 @@ export async function GET() {
     else if (kpIndex >= 3) { stormLevel = 'Unsettled'; stormColor = '#D4AF37'; }
 
     // Recent alerts
-    const alerts: any[] = [];
+    const alerts: SpaceWeatherAlert[] = [];
     if (alertsRes.status === 'fulfilled' && Array.isArray(alertsRes.value)) {
       for (const alert of alertsRes.value.slice(0, 10)) {
         alerts.push({
@@ -54,7 +67,7 @@ export async function GET() {
     }
 
     // Recent solar flares
-    const flares: any[] = [];
+    const flares: SolarFlare[] = [];
     if (flareRes.status === 'fulfilled' && Array.isArray(flareRes.value)) {
       for (const flare of flareRes.value.slice(0, 5)) {
         if (!flare.max_class) continue;

@@ -6,6 +6,19 @@ import { NextResponse } from 'next/server';
  * Fix #115: Steps 2-4 now run in parallel via Promise.allSettled
  */
 
+interface LocationInfo {
+  city: string;
+  state: string;
+  country: string;
+  country_code: string;
+  display_name: string;
+}
+
+interface CurrencyInfo {
+  name: string;
+  symbol?: string;
+}
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const lat = parseFloat(searchParams.get('lat') || '0');
@@ -23,7 +36,7 @@ export async function GET(request: Request) {
 
     let countryName = '';
     let countryCode = '';
-    let locationInfo: any = {};
+    let locationInfo: LocationInfo = { city: '', state: '', country: '', country_code: '', display_name: '' };
 
     if (geoRes.ok) {
       const geoData = await geoRes.json();
@@ -128,7 +141,7 @@ export async function GET(request: Request) {
         subregion: countryData.subregion,
         languages: countryData.languages ? Object.values(countryData.languages) : [],
         currencies: countryData.currencies
-          ? Object.entries(countryData.currencies).map(([code, info]: [string, any]) => `${info.name} (${info.symbol || code})`)
+          ? Object.entries(countryData.currencies as Record<string, CurrencyInfo>).map(([code, info]) => `${info.name} (${info.symbol || code})`)
           : [],
         flag: countryData.flag,
         flag_url: countryData.flags?.svg,

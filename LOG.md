@@ -4,6 +4,27 @@
 
 ---
 
+## 2026-05-28 (session 6) — Type Tightening (API Routes)
+
+### Task: Eliminate `any` types in critical backend routes
+
+- **OSINT Routes (24 instances of `any` removed):**
+  - Fully typed all 8 OSINT routes (`whois`, `ip`, `dns`, `bgp`, `cve`, `threats`, etc.).
+  - Added strict interfaces for external APIs (RDAP, Google DNS, MITRE CVE 5.0, OTX Pulses, BGPView).
+  - Strongly typed all return structures (`WhoisResult`, `DnsResult`, `ThreatsResult`, etc.).
+- **Feed/Geo Routes (Remaining route `any` types eliminated):**
+  - Typed `earthquakes`, `news`, `region-dossier`, `cctv` routes.
+  - Replaced massive `any` arrays with proper `Camera` and `RssItem` interfaces.
+- **Tests (4 instances removed):**
+  - Tightened types in `osint/dns/route.test.ts` and `osint/sweep/route.test.ts` to `Record<string, unknown>` and targeted objects.
+
+**Current State:** 
+- All backend routes are now strictly typed.
+- Remaining `any` usage is isolated solely to frontend React components (`src/components/` and `page.tsx`).
+- **Quality gates:** lint ✅ | 553 tests / 54 files ✅ | build ✅
+
+---
+
 ## 2026-05-28 (session 5) — OSINT Route Tests (Part 2 — completion)
 
 ### Task: remaining 4 OSINT routes test coverage (31 tests added)

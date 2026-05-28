@@ -1,7 +1,79 @@
 import { NextResponse } from 'next/server';
 import { isRateLimited, getClientIp } from '@/lib/ssrf-guard';
 
-// CVE Intelligence — fetches vulnerability details from CIRCL CVE API (free, no key)
+// ── MITRE CVE 5.0 response types (subset) ──
+
+interface MitreCveDescription {
+  lang: string;
+  value: string;
+}
+
+interface MitreCvssV3 {
+  baseScore?: number;
+  vectorString?: string;
+  baseSeverity?: string;
+}
+
+interface MitreCvssV2 {
+  baseScore?: number;
+  vectorString?: string;
+}
+
+interface MitreMetric {
+  cvssV3_1?: MitreCvssV3;
+  cvssV3_0?: MitreCvssV3;
+  cvssV31?: MitreCvssV3;
+  cvssV2_0?: MitreCvssV2;
+  cvssV2?: MitreCvssV2;
+}
+
+interface MitreProblemType {
+  descriptions?: Array<{ cweId?: string; description?: string }>;
+}
+
+interface MitreAffected {
+  vendor?: string;
+  product?: string;
+  versions?: Array<{ version?: string }>;
+}
+
+interface MitreReference {
+  url: string;
+}
+
+interface MitreCna {
+  descriptions?: MitreCveDescription[];
+  metrics?: MitreMetric[];
+  problemTypes?: MitreProblemType[];
+  affected?: MitreAffected[];
+  references?: MitreReference[];
+}
+
+interface MitreCveResponse {
+  cveMetadata?: {
+    cveId?: string;
+    datePublished?: string;
+    dateUpdated?: string;
+  };
+  containers?: {
+    cna?: MitreCna;
+  };
+}
+
+// ── CIRCL fallback response type ──
+
+interface CirclCveResponse {
+  id?: string;
+  summary?: string;
+  cvss?: number | null;
+  cvss_vector?: string | null;
+  references?: string[];
+  Published?: string | null;
+  Modified?: string | null;
+  cwe?: string | null;
+}
+
+// CVE Intelligence — fetches vulnerability details from MITRE first, falls back to CIRCL
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const cve = searchParams.get('cve');
@@ -31,7 +103,7 @@ export async function GET(req: Request) {
           headers: { 'Accept': 'application/json' },
         });
         if (circlRes.ok) {
-          const data = await circlRes.json();
+          const data = await circlRes.json() as CirclCveResponse;
           return NextResponse.json({
             id: data.id || cve.toUpperCase(),
             description: data.summary || 'No description available.',
@@ -55,11 +127,11 @@ export async function GET(req: Request) {
       });
     }
 
-    const data = await res.json();
+    const data = await res.json() as MitreCveResponse;
 
     // Parse the CVE 5.0 JSON format from MITRE
     const cna = data.containers?.cna;
-    const description = cna?.descriptions?.find((d: any) => d.lang === 'en')?.value
+    const description = cna?.descriptions?.find((d) => d.lang === 'en')?.value
       || cna?.descriptions?.[0]?.value
       || 'No description available.';
 
@@ -95,13 +167,13 @@ export async function GET(req: Request) {
     }
 
     // Extract references
-    const references = (cna?.references || []).slice(0, 5).map((r: any) => r.url);
+    const references = (cna?.references || []).slice(0, 5).map((r) => r.url);
 
     // Extract affected products
-    const affected = (cna?.affected || []).slice(0, 5).map((a: any) => ({
+    const affected = (cna?.affected || []).slice(0, 5).map((a) => ({
       vendor: a.vendor || 'Unknown',
       product: a.product || 'Unknown',
-      versions: (a.versions || []).slice(0, 3).map((v: any) => v.version).filter(Boolean),
+      versions: (a.versions || []).slice(0, 3).map((v) => v.version).filter(Boolean),
     }));
 
     return NextResponse.json({

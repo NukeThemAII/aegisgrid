@@ -32,7 +32,7 @@ describe('GET /api/osint/dns', () => {
     // Return empty arrays for most, but some records for A and MX
     vi.mocked(fetch).mockImplementation(async (url: RequestInfo | URL) => {
       const urlStr = url.toString();
-      let answers: any[] = [];
+      let answers: Array<Record<string, unknown>> = [];
       if (urlStr.includes('type=A')) {
         answers = [{ name: 'example.com.', type: 1, TTL: 300, data: '93.184.216.34' }];
       } else if (urlStr.includes('type=MX')) {

@@ -1,6 +1,64 @@
 import { NextResponse } from 'next/server';
 import { isRateLimited, getClientIp } from '@/lib/ssrf-guard';
 
+// ── External API response types ──
+
+interface IpApiResponse {
+  status: 'success' | 'fail';
+  message?: string;
+  continent?: string;
+  country?: string;
+  countryCode?: string;
+  region?: string;
+  regionName?: string;
+  city?: string;
+  zip?: string;
+  lat?: number;
+  lon?: number;
+  timezone?: string;
+  isp?: string;
+  org?: string;
+  as?: string;
+  asname?: string;
+  mobile?: boolean;
+  proxy?: boolean;
+  hosting?: boolean;
+  query?: string;
+}
+
+// ── Normalised output types ──
+
+interface GeoResult {
+  country?: string;
+  country_code?: string;
+  region?: string;
+  city?: string;
+  lat?: number;
+  lon?: number;
+  timezone?: string;
+  isp?: string;
+  org?: string;
+  as_number?: string;
+  as_name?: string;
+  is_mobile?: boolean;
+  is_proxy?: boolean;
+  is_hosting?: boolean;
+}
+
+interface Reputation {
+  is_proxy: boolean;
+  is_hosting: boolean;
+  is_mobile: boolean;
+  risk_level: 'HIGH' | 'MEDIUM' | 'LOW';
+}
+
+interface IpResult {
+  ip: string;
+  timestamp: string;
+  geo?: GeoResult;
+  reputation: Reputation;
+}
+
 // IP Geolocation + Reputation — combines multiple free sources
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -28,7 +86,7 @@ export async function GET(req: Request) {
   }
 
   try {
-    const results: any = { ip, timestamp: new Date().toISOString() };
+    let geo: GeoResult | undefined;
 
     // 1. ip-api.com — geolocation (free, no key)
     // Note: ip-api.com free tier requires HTTP; HTTPS is paid-only.
@@ -38,37 +96,38 @@ export async function GET(req: Request) {
         signal: AbortSignal.timeout(5000),
       });
       if (res.ok) {
-        const geo = await res.json();
-        if (geo.status === 'success') {
-          results.geo = {
-            country: geo.country,
-            country_code: geo.countryCode,
-            region: geo.regionName,
-            city: geo.city,
-            lat: geo.lat,
-            lon: geo.lon,
-            timezone: geo.timezone,
-            isp: geo.isp,
-            org: geo.org,
-            as_number: geo.as,
-            as_name: geo.asname,
-            is_mobile: geo.mobile,
-            is_proxy: geo.proxy,
-            is_hosting: geo.hosting,
+        const data = await res.json() as IpApiResponse;
+        if (data.status === 'success') {
+          geo = {
+            country: data.country,
+            country_code: data.countryCode,
+            region: data.regionName,
+            city: data.city,
+            lat: data.lat,
+            lon: data.lon,
+            timezone: data.timezone,
+            isp: data.isp,
+            org: data.org,
+            as_number: data.as,
+            as_name: data.asname,
+            is_mobile: data.mobile,
+            is_proxy: data.proxy,
+            is_hosting: data.hosting,
           };
         }
       }
     } catch (e) { console.warn('[AEGISGRID] Suppressed error:', e instanceof Error ? e.message : e); }
 
     // 2. AbuseIPDB-style check via ip-api proxy flag
-    results.reputation = {
-      is_proxy: results.geo?.is_proxy || false,
-      is_hosting: results.geo?.is_hosting || false,
-      is_mobile: results.geo?.is_mobile || false,
-      risk_level: results.geo?.is_proxy ? 'HIGH' : results.geo?.is_hosting ? 'MEDIUM' : 'LOW',
+    const reputation: Reputation = {
+      is_proxy: geo?.is_proxy || false,
+      is_hosting: geo?.is_hosting || false,
+      is_mobile: geo?.is_mobile || false,
+      risk_level: geo?.is_proxy ? 'HIGH' : geo?.is_hosting ? 'MEDIUM' : 'LOW',
     };
 
-    return NextResponse.json(results);
+    const result: IpResult = { ip, timestamp: new Date().toISOString(), geo, reputation };
+    return NextResponse.json(result);
   } catch {
     return NextResponse.json({ error: 'IP lookup failed' }, { status: 500 });
   }
