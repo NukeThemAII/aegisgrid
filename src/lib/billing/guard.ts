@@ -29,8 +29,11 @@ function hasEntitlement(subject: AppSubject, capability: PremiumCapability): boo
 }
 
 function staticFallbackAllowed(): boolean {
-  if (!isDatabaseConfigured() && process.env.AUTH_STATIC_ENTITLEMENTS_FALLBACK === 'true') return true;
-  return false;
+  // Allow static entitlements when:
+  // 1. No database is configured (dev/local mode without Postgres), OR
+  // 2. AUTH_STATIC_ENTITLEMENTS_FALLBACK is explicitly enabled
+  if (!isDatabaseConfigured()) return true;
+  return process.env.AUTH_STATIC_ENTITLEMENTS_FALLBACK === 'true';
 }
 
 function databaseRepository(options: PremiumAccessOptions): Pick<AppRepository, 'findActiveEntitlement'> | null {

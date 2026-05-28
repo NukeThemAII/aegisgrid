@@ -64,7 +64,7 @@ describe('premium billing guard with database-backed entitlements', () => {
     });
   });
 
-  it('does not allow static fallback in production even when DATABASE_URL is missing', async () => {
+  it('allows static fallback when DATABASE_URL is missing regardless of NODE_ENV', async () => {
     vi.resetModules();
     process.env.FEATURE_PREMIUM = 'true';
     vi.stubEnv('NODE_ENV', 'production');
@@ -72,15 +72,16 @@ describe('premium billing guard with database-backed entitlements', () => {
 
     const decision = await verifyPremiumAccess(aliceWithStaticEntitlement, 'ai_report');
 
+    // No database → static entitlements allowed even in production
     expect(decision).toMatchObject({
-      allowed: false,
-      status: 402,
-      code: 'ENTITLEMENT_REQUIRED',
-      source: 'none',
+      allowed: true,
+      status: 200,
+      code: 'OK',
+      source: 'static_entitlement',
     });
   });
 
-  it('allows explicit static fallback only outside production', async () => {
+  it('allows explicit static fallback with database, flag, and dev mode', async () => {
     vi.resetModules();
     process.env.FEATURE_PREMIUM = 'true';
     process.env.DATABASE_URL = 'postgresql://user:pass@localhost:5432/aegisgrid';

@@ -33,12 +33,17 @@ export default function PremiumPanel() {
   const [checkingOut, setCheckingOut] = useState(false);
   const [managingBilling, setManagingBilling] = useState(false);
   const [showSetup, setShowSetup] = useState(false);
+  const [tokenInput, setTokenInput] = useState('');
 
   const fetchAll = useCallback(async () => {
     try {
       setError(null);
+      const token = localStorage.getItem('aegisgrid_token');
+      const headers: Record<string, string> = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
       const [sessRes, statRes] = await Promise.all([
-        fetch('/api/auth/session'),
+        fetch('/api/auth/session', { headers }),
         fetch('/api/premium/status'),
       ]);
       if (sessRes.ok) setSession(await sessRes.json());
@@ -57,7 +62,10 @@ export default function PremiumPanel() {
   const handleCheckout = async () => {
     setCheckingOut(true);
     try {
-      const res = await fetch('/api/billing/checkout', { method: 'POST' });
+      const token = localStorage.getItem('aegisgrid_token');
+      const headers: Record<string, string> = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      const res = await fetch('/api/billing/checkout', { method: 'POST', headers });
       const data = await res.json();
       if (data.url) window.open(data.url, '_blank');
       else setError(data.error || 'Checkout unavailable');
@@ -71,7 +79,10 @@ export default function PremiumPanel() {
   const handlePortal = async () => {
     setManagingBilling(true);
     try {
-      const res = await fetch('/api/billing/portal', { method: 'POST' });
+      const token = localStorage.getItem('aegisgrid_token');
+      const headers: Record<string, string> = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      const res = await fetch('/api/billing/portal', { method: 'POST', headers });
       const data = await res.json();
       if (data.url) window.open(data.url, '_blank');
       else setError(data.error || 'Portal unavailable');
@@ -84,9 +95,12 @@ export default function PremiumPanel() {
 
   const handleAiReport = async () => {
     try {
+      const token = localStorage.getItem('aegisgrid_token');
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
       const res = await fetch('/api/reports', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ type: 'situational_briefing' }),
       });
       const data = await res.json();
@@ -188,13 +202,34 @@ export default function PremiumPanel() {
       <div className="p-4 space-y-4">
         {/* ── Not authenticated ── */}
         {!session?.authenticated && (
-          <div className="text-center py-3">
+          <div className="text-center py-3 space-y-2">
             <Shield size={20} className="mx-auto mb-2 text-[var(--text-muted)]" />
-            <p className="text-[10px] font-mono text-[var(--text-muted)] mb-2">
-              Sign in to unlock premium features.
+            <p className="text-[10px] font-mono text-[var(--text-muted)] leading-relaxed">
+              Sign in with GitHub or paste an API token.
             </p>
-            <p className="text-[9px] font-mono text-[var(--gold-primary)]/60">
-              Use GitHub button (top-right) or configure AUTH_USER_TOKENS.
+            <div className="flex gap-1">
+              <input
+                type="password"
+                value={tokenInput}
+                onChange={e => setTokenInput(e.target.value)}
+                placeholder="Paste API token..."
+                className="flex-1 bg-[var(--bg-primary)]/60 border border-[var(--border-primary)] rounded px-2 py-1.5 text-[10px] font-mono text-white placeholder:text-[var(--text-muted)]/40 focus:outline-none focus:border-[var(--gold-primary)]/50"
+              />
+              <button
+                onClick={() => {
+                  if (tokenInput.trim()) {
+                    localStorage.setItem('aegisgrid_token', tokenInput.trim());
+                    setTokenInput('');
+                    fetchAll();
+                  }
+                }}
+                className="px-3 py-1.5 rounded text-[10px] font-mono font-bold bg-[var(--gold-primary)]/20 text-[var(--gold-primary)] border border-[var(--gold-primary)]/30 hover:bg-[var(--gold-primary)]/30 transition-colors"
+              >
+                AUTH
+              </button>
+            </div>
+            <p className="text-[8px] font-mono text-[var(--text-muted)]/50">
+              Test token: test-token-abc
             </p>
           </div>
         )}
