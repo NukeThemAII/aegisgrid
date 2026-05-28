@@ -16,6 +16,9 @@ Wire into desktop sidebar.
 **Estimate:** ~1.5h.
 **Done:** commit `fc36f78` — PremiumPanel.tsx created and wired into page.tsx.
 
+### 1. [x] Feed route per-route rate limiting
+**Done:** commit `b42beff` — 17 routes rate-limited, 16 new tests.
+
 ### 2. [ ] Scanner response sanitization
 **Why:** MEDIUM gap. Scanner proxy responses from external backend pass through
 without field allowlisting. An attacker-controllable scanner backend could
