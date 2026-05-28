@@ -16,13 +16,14 @@ export async function GET(req: Request) {
     const results: any = { query, timestamp: new Date().toISOString() };
 
     // Detect query type
-    const isIP = /^(\d{1,3}\.){3}\d{1,3}$/.test(query);
+    const isIPFormat = /^(\d{1,3}\.){3}\d{1,3}$/.test(query);
+    const isIP = isIPFormat && query.split('.').every(o => Number(o) <= 255);
     const isASN = /^(AS)?\d+$/i.test(query);
     const asnNum = isASN ? query.replace(/^AS/i, '') : null;
 
     if (isIP) {
       // IP → ASN lookup
-      const res = await fetch(`https://api.bgpview.io/ip/${query}`, {
+      const res = await fetch(`https://api.bgpview.io/ip/${encodeURIComponent(query)}`, {
         signal: AbortSignal.timeout(8000),
         headers: { 'Accept': 'application/json' },
       });

@@ -12,10 +12,18 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
   }
 
-  // Validate IP format
+  // Validate IP format — IPv4 octets must be 0-255, IPv6 must contain colons
   const ipv4 = /^(\d{1,3}\.){3}\d{1,3}$/;
-  const ipv6 = /^[0-9a-fA-F:]+$/;
-  if (!ipv4.test(ip) && !ipv6.test(ip)) {
+  const ipv6 = /^[0-9a-fA-F]{1,4}(:[0-9a-fA-F]{0,4}){2,7}$/;
+  const isV4 = ipv4.test(ip);
+  const isV6 = !isV4 && ipv6.test(ip);
+  if (isV4) {
+    const octets = ip.split('.').map(Number);
+    if (octets.some(o => o > 255)) {
+      return NextResponse.json({ error: 'Invalid IP format' }, { status: 400 });
+    }
+  }
+  if (!isV4 && !isV6) {
     return NextResponse.json({ error: 'Invalid IP format' }, { status: 400 });
   }
 
@@ -23,8 +31,10 @@ export async function GET(req: Request) {
     const results: any = { ip, timestamp: new Date().toISOString() };
 
     // 1. ip-api.com — geolocation (free, no key)
+    // Note: ip-api.com free tier requires HTTP; HTTPS is paid-only.
+    // The data returned is public geolocation metadata, not sensitive user data.
     try {
-      const res = await fetch(`http://ip-api.com/json/${ip}?fields=status,message,continent,country,countryCode,region,regionName,city,zip,lat,lon,timezone,isp,org,as,asname,mobile,proxy,hosting,query`, {
+      const res = await fetch(`http://ip-api.com/json/${encodeURIComponent(ip)}?fields=status,message,continent,country,countryCode,region,regionName,city,zip,lat,lon,timezone,isp,org,as,asname,mobile,proxy,hosting,query`, {
         signal: AbortSignal.timeout(5000),
       });
       if (res.ok) {

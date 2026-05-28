@@ -352,8 +352,10 @@ export async function GET(req: Request) {
 
   try {
     // --- 3. Geolocation ---
+    // Note: ip-api.com free tier requires HTTP; HTTPS is paid-only.
+    // The data returned is public geolocation metadata, not sensitive user data.
     const geoRes = await fetch(
-      `http://ip-api.com/json/${ip}?fields=status,message,country,countryCode,region,regionName,city,lat,lon,isp,org,as,proxy,hosting`,
+      `http://ip-api.com/json/${encodeURIComponent(ip)}?fields=status,message,country,countryCode,region,regionName,city,lat,lon,isp,org,as,proxy,hosting`,
       { signal: AbortSignal.timeout(5000) },
     );
 
