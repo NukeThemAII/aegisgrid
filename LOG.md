@@ -4,6 +4,28 @@
 
 ---
 
+## 2026-05-28 (session 5) — OSINT Route Tests (Part 2 — completion)
+
+### Task: remaining 4 OSINT routes test coverage (31 tests added)
+
+| Route | Tests | Coverage |
+|-------|-------|----------|
+| `/api/osint/certs` | 6 | Domain validation, CT log deduplication, wildcard stripping, subdomain extraction, crt.sh unavailability, network errors. |
+| `/api/osint/cve` | 9 | CVE format validation, MITRE CVE 5.0 parsing (CVSS, CWE, affected products, references), CIRCL fallback, dual-source failure, severity derivation. |
+| `/api/osint/threats` | 5 | OTX pulse fetching (auth fallback to activity), IP Tor exit list check, OTX reputation, domain WHOIS, threat level calculation. |
+| `/api/osint/sweep` | 11 | IPv4 validation, 8 private/reserved range tests, CIDR range validation, geo error handling, full sweep with device classification + risk assessment, network errors. |
+
+Also fixed: `prefer-const` lint warning in `/api/osint/bgp` test from previous session.
+
+**Quality gates:** lint ✅ (zero warnings) | typecheck ✅ | 553 tests / 54 files ✅ | build ✅
+
+### Gaps closed
+- ~~OSINT route tests~~ → **ALL 8 ROUTES TESTED** (IP, DNS, BGP, WHOIS, certs, CVE, threats, sweep)
+- Test count: 522 → **553** (+31)
+- Test files: 50 → **54** (+4)
+
+---
+
 ## 2026-05-28 (session 4) — OSINT Route Tests (Part 1)
 
 ### Task: OSINT routes test coverage (20 tests added)

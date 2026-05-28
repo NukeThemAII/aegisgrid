@@ -68,17 +68,14 @@ describe('GET /api/osint/bgp', () => {
     // We expect 3 fetch calls for ASN: details, prefixes, peers
     vi.mocked(fetch).mockImplementation(async (url: RequestInfo | URL) => {
       const urlStr = url.toString();
-      let data: any = { status: 'ok', data: {} };
       
       if (urlStr.includes('/prefixes')) {
-        data.data = { ipv4_prefixes: [{ prefix: '8.8.8.0/24' }], ipv6_prefixes: [] };
+        return new Response(JSON.stringify({ status: 'ok', data: { ipv4_prefixes: [{ prefix: '8.8.8.0/24' }], ipv6_prefixes: [] } }));
       } else if (urlStr.includes('/peers')) {
-        data.data = { ipv4_peers: [{ asn: 12345 }] };
+        return new Response(JSON.stringify({ status: 'ok', data: { ipv4_peers: [{ asn: 12345 }] } }));
       } else {
-        data.data = { asn: 15169, name: 'GOOGLE' };
+        return new Response(JSON.stringify({ status: 'ok', data: { asn: 15169, name: 'GOOGLE' } }));
       }
-      
-      return new Response(JSON.stringify(data));
     });
 
     const req = mockRequest('http://localhost/api/osint/bgp?query=AS15169');
