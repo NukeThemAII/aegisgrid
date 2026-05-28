@@ -175,6 +175,7 @@ const jsonLd = {
 import { Analytics } from "@vercel/analytics/next";
 
 import ErrorBoundary from '@/components/ErrorBoundary';
+import { AuthButton } from '@/components/AuthButton';
 
 export default function RootLayout({
   children,
@@ -198,7 +199,10 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
       </head>
-      <body className="antialiased">
+      <body className="antialiased relative">
+        <div className="absolute top-14 right-3 md:top-16 md:right-5 z-[300] pointer-events-auto">
+          <AuthButton />
+        </div>
         <ErrorBoundary name="AEGISGRID Core">
           {children}
         </ErrorBoundary>

@@ -4,6 +4,17 @@
 
 ---
 
+## 2026-05-28 (session 7) — OAuth Layer Implementation
+
+### Task: NextAuth (Auth.js v5) Integration
+- **Installed `next-auth@beta`**: Integrated the modern App Router-compatible Auth.js v5.
+- **Configured Providers**: Setup `GitHub` and `Google` OAuth providers in `src/auth.ts`.
+- **API Routes**: Configured the catch-all `[...nextauth]` route handler.
+- **UI Integration**: Added a Server Component `<AuthButton />` positioned in the top-right command center of `layout.tsx` to handle `signIn` and `signOut` Server Actions.
+- **Quality Gates**: `npm run build` passes with full Next.js 16/React 19 compatibility.
+
+---
+
 ## 2026-05-28 (session 6) — Type Tightening (API Routes)
 
 ### Task: Eliminate `any` types in critical backend routes
