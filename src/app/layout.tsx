@@ -174,8 +174,8 @@ const jsonLd = {
 
 import { Analytics } from "@vercel/analytics/next";
 
-import ErrorBoundary from '@/components/ErrorBoundary';
-import { AuthButton } from '@/components/AuthButton';
+import ErrorBoundary from '@/components/ui/ErrorBoundary';
+import { AuthButton } from '@/components/ui/AuthButton';
 
 export default function RootLayout({
   children,
