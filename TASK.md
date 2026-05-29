@@ -1,27 +1,10 @@
 # AegisGrid Task Backlog
 
-> Priority-ordered. Completed items show commit SHA.
+> All HIGH priority tasks complete. Remaining items need external deps.
 
 ---
 
-## IN PROGRESS — Premium Dashboard (separate page)
-
-### Premium Dashboard (`/premium`)
-**Stack:** Next.js App Router + recharts (free MIT) + DeepSeek AI
-**Goal:** Dedicated full-page premium hub with data-rich AI analysis,
-charts/pies from live OSINT feeds, payment integration, and zero clutter.
-
-**Sections:**
-- AI Situational Briefing — DeepSeek-generated reports with charts
-- Sensor Dashboard — live earthquake/fire/threat data as visualizations
-- Threat Matrix — cyber threat indicators with severity gauges
-- Account — auth status, entitlements, Stripe/x402 purchase flow
-
-**Estimate:** ~3h
-
----
-
-## HIGH — Completed
+## COMPLETED (all commits on master)
 
 - [x] Feed route rate limiting — `b42beff`
 - [x] Premium frontend panel — `fc36f78`
@@ -31,35 +14,34 @@ charts/pies from live OSINT feeds, payment integration, and zero clutter.
 - [x] CSRF protection — `99837b8`
 - [x] SSRF host-pinning — `581592f`
 - [x] Radiation adapter (Safecast) — `b88124b`
-- [x] AI providers (DeepSeek, Gemini) — `33f9a03`
+- [x] AI providers (DeepSeek/Gemini) — `33f9a03`
 - [x] Auth fix (no-db fallback) — `c9881da`
 - [x] Balloons documented — `aa0b02d`
 - [x] Auto-collect feeds for reports — `f10021a`
 - [x] Report UX (inline display) — `dd66fef`
 - [x] Component directory reorg — `54f1dd4`
-- [x] Docker dedup — `33f9a03`
+- [x] Premium dashboard page — `9661609`
+- [x] Threat analysis widget — `c9cf0e8`
+- [x] Global events (GDELT) — `a73b21f`
+- [x] pino structured logging — `3a91a12`
+- [x] OsintPanel 834→253 line refactor — `c9263f9` (AGY)
+- [x] Comms & live feeds — `dfcb55a`
 
----
+## BLOCKED — needs external credentials
 
-## REMAINING
-
-- [ ] AIS maritime tracking
-- [ ] Comms/collaboration features
-- [x] pino structured logging
-- [x] OsintPanel refactor (825-line monolith)
-- [ ] CSP nonces (AUDIT.md Rec #2)
-- [ ] DB audit trails (AUDIT.md Rec #3)
-
----
-
-## Credentials needed from operator
-
-| Feature | Variables |
+| Task | Blocker |
 |---|---|
-| Stripe Pro | STRIPE_SECRET_KEY, NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY, STRIPE_WEBHOOK_SECRET, STRIPE_PRICE_PRO_MONTHLY |
-| x402 USDC | X402_RECEIVING_ADDRESS |
-| GitHub OAuth | AUTH_GITHUB_ID, AUTH_GITHUB_SECRET |
+| Stripe payments | STRIPE_SECRET_KEY + price IDs |
+| x402 USDC payments | X402_RECEIVING_ADDRESS |
+| GitHub OAuth login | AUTH_GITHUB_ID + AUTH_GITHUB_SECRET |
+| AIS maritime tracking | AISSTREAM_API_KEY (free at aisstream.io) |
+| DB audit trails | DATABASE_URL (Postgres) |
+
+## LOW — optional hardening
+
+- [ ] CSP nonces — complex for Next.js 16, current CSP is already strict
+- [ ] More comms sources — add regional SDR/ATC as needed
 
 ---
 
-*Last updated: 2026-05-28*
+*Last updated: 2026-05-29*
