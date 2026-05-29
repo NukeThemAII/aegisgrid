@@ -1,11 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Crown, Zap, Shield, Activity, BarChart3, ArrowLeft, Globe } from 'lucide-react';
+import { Crown, Zap, Shield, Activity, BarChart3, ArrowLeft, Globe, Radio } from 'lucide-react';
 import SensorCharts from '@/components/premium/SensorCharts';
 import AiAnalysis from '@/components/premium/AiAnalysis';
 import ThreatAnalysis from '@/components/premium/ThreatAnalysis';
 import GlobalEvents from '@/components/premium/GlobalEvents';
+import CommsPanel from '@/components/premium/CommsPanel';
 
 export default function PremiumPage() {
   const [session, setSession] = useState<any>(null);
@@ -136,6 +137,16 @@ export default function PremiumPage() {
                 <span className="text-[9px] font-mono text-[var(--text-muted)] ml-2">GDELT · Live News</span>
               </div>
               <GlobalEvents />
+            </section>
+
+            {/* ── Comms ── */}
+            <section className="border border-[var(--border-primary)] rounded-xl p-5">
+              <div className="flex items-center gap-2 mb-4">
+                <Radio size={18} className="text-[#76FF03]" />
+                <h2 className="text-sm font-mono font-bold tracking-wider text-white">COMMS & LIVE FEEDS</h2>
+                <span className="text-[9px] font-mono text-[var(--text-muted)] ml-2">SDR · ATC · Briefings</span>
+              </div>
+              <CommsPanel />
             </section>
 
             {/* ── Quick Stats ── */}
