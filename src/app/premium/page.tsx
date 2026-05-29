@@ -62,9 +62,30 @@ export default function PremiumPage() {
       const res = await fetch('/api/billing/checkout', { method: 'POST', headers });
       const data = await res.json();
       if (data.url) window.location.href = data.url;
-      else setTokenError(data.error || 'Checkout unavailable');
+      else setTokenError(data.error || 'Checkout unavailable — Stripe not configured');
     } catch {
       setTokenError('Checkout request failed');
+    }
+  };
+
+  const handleBuyDayPass = async () => {
+    const t = localStorage.getItem('aegisgrid_token');
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (t) headers['Authorization'] = `Bearer ${t}`;
+    try {
+      const res = await fetch('/api/premium/purchase', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ tier: 'day_pass' }),
+      });
+      const data = await res.json();
+      if (data.token) {
+        window.location.href = `/premium?token=${encodeURIComponent(data.token)}`;
+      } else {
+        setTokenError(data.error || 'Purchase failed');
+      }
+    } catch {
+      setTokenError('Purchase request failed');
     }
   };
 
@@ -115,6 +136,17 @@ export default function PremiumPage() {
 
           {/* Payment Options */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Buy Day Pass (always available) */}
+            <div className="border border-[var(--cyan-primary)]/30 bg-[var(--cyan-primary)]/5 rounded-xl p-5 text-center space-y-3">
+              <Zap size={28} className="mx-auto text-[var(--cyan-primary)]" />
+              <h3 className="text-sm font-mono font-bold text-white">DAY PASS</h3>
+              <p className="text-xs font-mono text-[var(--text-muted)]">24-hour premium access with AI reports</p>
+              <button onClick={handleBuyDayPass}
+                className="w-full py-2.5 rounded-lg text-xs font-mono font-bold bg-[var(--cyan-primary)]/20 text-[var(--cyan-primary)] border border-[var(--cyan-primary)]/30 hover:bg-[var(--cyan-primary)]/30 transition-all">
+                BUY DAY PASS
+              </button>
+            </div>
+
             {/* Stripe */}
             <div className={`border rounded-xl p-5 text-center space-y-3 ${stripeOk ? 'border-[var(--gold-primary)]/30 bg-[var(--gold-primary)]/5' : 'border-[var(--border-primary)] opacity-50'}`}>
               <CreditCard size={28} className="mx-auto text-[var(--gold-primary)]" />
@@ -125,18 +157,20 @@ export default function PremiumPage() {
                 {stripeOk ? 'SUBSCRIBE' : 'NOT CONFIGURED'}
               </button>
             </div>
+          </div>
 
-            {/* x402 */}
-            <div className={`border rounded-xl p-5 text-center space-y-3 ${x402Ok ? 'border-purple-500/30 bg-purple-500/5' : 'border-[var(--border-primary)] opacity-50'}`}>
-              <Zap size={28} className="mx-auto text-purple-400" />
-              <h3 className="text-sm font-mono font-bold text-white">x402 USDC</h3>
-              <p className="text-xs font-mono text-[var(--text-muted)]">Pay-per-use with USDC on Base</p>
-              <button disabled={!x402Ok}
-                className="w-full py-2.5 rounded-lg text-xs font-mono font-bold bg-purple-500/20 text-purple-400 border border-purple-500/30 hover:bg-purple-500/30 disabled:opacity-30 transition-all">
-                {x402Ok ? 'PAY WITH USDC' : 'NOT CONFIGURED'}
+          {/* x402 row */}
+          {x402Ok && (
+            <div className="border border-purple-500/30 bg-purple-500/5 rounded-xl p-5 text-center space-y-3">
+              <Zap size={24} className="mx-auto text-purple-400" />
+              <h3 className="text-sm font-mono font-bold text-white">x402 USDC PAY-PER-USE</h3>
+              <p className="text-xs font-mono text-[var(--text-muted)]">Pay in USDC on Base. Purchase tokens via x402 protocol.</p>
+              <button onClick={handleBuyDayPass}
+                className="w-full py-2.5 rounded-lg text-xs font-mono font-bold bg-purple-500/20 text-purple-400 border border-purple-500/30 hover:bg-purple-500/30 transition-all">
+                BUY WITH USDC
               </button>
             </div>
-          </div>
+          )}
 
           {tokenError && (
             <div className="p-3 rounded-lg border border-red-500/20 bg-red-500/5 text-xs font-mono text-red-400 text-center">
