@@ -64,9 +64,9 @@ describe('/api/billing/webhook', () => {
       constructStripeWebhookEvent: vi.fn(() => ({ id: 'evt_1', type: 'checkout.session.completed', livemode: false, data: { object: { object: 'checkout.session' } } } as Stripe.Event)),
     }));
     vi.doMock('@/lib/payments/stripe-fulfillment', () => ({
-      fulfillStripeEvent: vi.fn(async () => ({ status: 'processed', action: 'subscription_entitlement_granted' })),
+      fulfillStripePayment: vi.fn(async () => ({ status: 'processed', action: 'subscription_entitlement_granted' })),
     }));
-    const { fulfillStripeEvent } = await import('@/lib/payments/stripe-fulfillment');
+    const { fulfillStripePayment } = await import('@/lib/payments/stripe-fulfillment');
     const { POST } = await import('./route');
 
     const res = await POST(webhookRequest('{"id":"evt_1"}', 'sig'));
@@ -74,7 +74,7 @@ describe('/api/billing/webhook', () => {
 
     expect(res.status).toBe(200);
     expect(body).toEqual({ ok: true, status: 'processed', action: 'subscription_entitlement_granted' });
-    expect(fulfillStripeEvent).toHaveBeenCalled();
+    expect(fulfillStripePayment).toHaveBeenCalled();
     expect(JSON.stringify(body)).not.toContain('whsec');
   });
 
@@ -87,7 +87,7 @@ describe('/api/billing/webhook', () => {
       constructStripeWebhookEvent: vi.fn(() => ({ id: 'evt_processing', type: 'checkout.session.completed', livemode: false, data: { object: { object: 'checkout.session' } } } as Stripe.Event)),
     }));
     vi.doMock('@/lib/payments/stripe-fulfillment', () => ({
-      fulfillStripeEvent: vi.fn(async () => ({ status: 'retry', action: 'already_processing' })),
+      fulfillStripePayment: vi.fn(async () => ({ status: 'retry', action: 'already_processing' })),
     }));
     const { POST } = await import('./route');
 

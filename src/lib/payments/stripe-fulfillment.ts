@@ -1,6 +1,7 @@
 import type Stripe from 'stripe';
 import type { EntitlementSource, EntitlementStatus, PaymentEventClaimStatus, PremiumCapability } from '@/lib/db/app-repository';
 import { stripeProductConfig, type StripeProduct } from './payment-config';
+import { createAccessToken } from '@/lib/premium/access-tokens';
 
 export interface PaymentRepository {
   claimPaymentEvent(provider: 'stripe', eventId: string, eventType: string, metadata?: unknown): Promise<PaymentEventClaimStatus>;
@@ -165,6 +166,12 @@ function fulfillmentAction(event: Stripe.Event, repository: PaymentRepository): 
   }
 }
 
+export interface StripePaymentFulfillmentResult extends StripeFulfillmentResult {
+  token?: string;
+  expiresAt?: string;
+  capabilities?: string[];
+}
+
 export async function fulfillStripeEvent(event: Stripe.Event, repository: PaymentRepository): Promise<StripeFulfillmentResult> {
   const claim = await repository.claimPaymentEvent('stripe', event.id, event.type, metadataSummary(event));
   if (claim === 'duplicate_processed') {
@@ -188,4 +195,43 @@ export async function fulfillStripeEvent(event: Stripe.Event, repository: Paymen
     await repository.releasePaymentEventClaim('stripe', event.id);
     throw error;
   }
+}
+
+/**
+ * Fulfill a Stripe payment event and generate a premium access token
+ * for checkout.session.completed events.
+ *
+ * Call this from the webhook handler instead of fulfillStripeEvent to
+ * receive a 30-day access token that can be returned to the frontend
+ * for immediate premium access before database-backed entitlements sync.
+ */
+export async function fulfillStripePayment(
+  event: Stripe.Event,
+  repository: PaymentRepository,
+): Promise<StripePaymentFulfillmentResult> {
+  const result = await fulfillStripeEvent(event, repository);
+
+  // Generate a 30-day access token for successful checkout completions
+  if (result.status === 'processed' && event.type === 'checkout.session.completed') {
+    const session = event.data.object as Stripe.Checkout.Session;
+    const subjectId = subjectFromMetadata(session.metadata);
+    if (subjectId) {
+      const capabilities = ['premium', 'ai_reports'];
+      const ttlHours = 720; // 30 days
+      const token = createAccessToken(subjectId, capabilities, ttlHours);
+
+      // Decode to get the precise expiresAt timestamp
+      const encoded = token.split('.')[1];
+      const payload = JSON.parse(Buffer.from(encoded, 'base64url').toString());
+
+      return {
+        ...result,
+        token,
+        expiresAt: new Date(payload.expiresAt).toISOString(),
+        capabilities,
+      };
+    }
+  }
+
+  return result;
 }

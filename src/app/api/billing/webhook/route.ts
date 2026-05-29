@@ -3,7 +3,7 @@ import { getDefaultAppRepository } from '@/lib/db/app-repository';
 import { isDatabaseConfigured } from '@/lib/db/postgres';
 import { isStripeConfigured, stripeLiveModeExpected } from '@/lib/payments/payment-config';
 import { constructStripeWebhookEvent } from '@/lib/payments/stripe-client';
-import { fulfillStripeEvent } from '@/lib/payments/stripe-fulfillment';
+import { fulfillStripePayment } from '@/lib/payments/stripe-fulfillment';
 
 export const runtime = 'nodejs';
 
@@ -62,14 +62,23 @@ export async function POST(req: Request) {
   }
 
   try {
-    const result = await fulfillStripeEvent(event, getDefaultAppRepository());
+    const result = await fulfillStripePayment(event, getDefaultAppRepository());
     if (result.status === 'retry') {
       return NextResponse.json({ ok: false, status: result.status, action: result.action }, {
         status: 503,
         headers: { 'Cache-Control': 'no-store', 'Retry-After': '30' },
       });
     }
-    return NextResponse.json({ ok: true, status: result.status, action: result.action }, {
+    return NextResponse.json({
+      ok: true,
+      status: result.status,
+      action: result.action,
+      ...(result.token ? {
+        token: result.token,
+        expiresAt: result.expiresAt,
+        capabilities: result.capabilities,
+      } : {}),
+    }, {
       headers: { 'Cache-Control': 'no-store' },
     });
   } catch {
