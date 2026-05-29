@@ -47,7 +47,13 @@ function validateCsrf(request: NextRequest): { allowed: boolean; reason?: string
 
   // Allow same-origin requests (Origin matches our app URL)
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-  const allowedOrigins = [appUrl, 'http://94.16.122.69:3004', 'http://94.16.122.69:3000'];
+  const allowedOrigins = [
+    appUrl,
+    'http://94.16.122.69:3004',
+    'http://94.16.122.69:3000',
+    'https://cipherops.shop:3443',
+    'https://cipherops.shop',
+  ];
 
   const checkOrigin = (val: string | null): boolean => {
     if (!val) return false;

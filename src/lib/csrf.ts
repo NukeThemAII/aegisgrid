@@ -16,15 +16,7 @@ import { NextResponse } from 'next/server';
 /** Allowed origins. In production, set to your actual domain. */
 function getAllowedOrigins(): string[] {
   const base = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-  const origins = [base];
-
-  // Allow VPS IP for local dev/testing
-  if (process.env.NODE_ENV !== 'production') {
-    origins.push('http://94.16.122.69:3004');
-    origins.push('http://94.16.122.69:3000');
-  }
-
-  return origins;
+  return [base, 'http://94.16.122.69:3004', 'http://94.16.122.69:3000', 'https://cipherops.shop:3443', 'https://cipherops.shop'];
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────
