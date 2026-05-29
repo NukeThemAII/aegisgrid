@@ -4,7 +4,7 @@ import path from 'path';
 
 const nextConfig: NextConfig = {
   output: 'standalone',
-  transpilePackages: ['react-map-gl', 'mapbox-gl', 'maplibre-gl'],
+  transpilePackages: ['react-map-gl', 'mapbox-gl', 'maplibre-gl', 'recharts'],
   turbopack: {
     root: path.resolve(__dirname),
   },
