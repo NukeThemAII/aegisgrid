@@ -28,15 +28,20 @@ afterEach(() => {
 });
 
 describe('/api/billing/checkout', () => {
-  it('requires authenticated app subject', async () => {
+  it('allows anonymous checkout with generated subjectId', async () => {
     vi.resetModules();
+    process.env.STRIPE_SECRET_KEY = 'sk_test_123';
+    process.env.STRIPE_PRICE_PRO_MONTHLY = 'price_123';
+    vi.doMock('@/lib/payments/stripe-client', () => ({
+      createCheckoutSession: vi.fn(async () => ({ id: 'cs_anon', url: 'https://checkout.stripe.com/pay' })),
+    }));
     const { POST } = await import('./route');
 
     const res = await POST(request({ product: 'pro_monthly' }));
     const body = await res.json();
 
-    expect(res.status).toBe(401);
-    expect(body.code).toBe('AUTH_REQUIRED');
+    expect(body.ok).toBe(true);
+    expect(body.checkout.url).toContain('stripe.com');
   });
 
   it('allows checkout without database — falls through to Stripe session creation', async () => {

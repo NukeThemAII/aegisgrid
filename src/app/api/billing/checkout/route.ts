@@ -7,13 +7,10 @@ import { createCheckoutSession } from '@/lib/payments/stripe-client';
 export const runtime = 'nodejs';
 
 export async function POST(req: Request) {
+  // Allow anonymous checkout — Stripe handles payment collection.
+  // The webhook auto-grants access after successful payment.
   const subject = parseAppSubject(req);
-  if (subject.role === 'anonymous' || !subject.subjectId) {
-    return NextResponse.json({
-      error: 'Authentication is required to create checkout sessions.',
-      code: 'AUTH_REQUIRED',
-    }, { status: 401 });
-  }
+  const subjectId = subject.subjectId || `anon_${Date.now()}`;
 
   // Database is optional for checkout — webhook fulfillment needs it
   if (!isDatabaseConfigured()) {
@@ -44,7 +41,7 @@ export async function POST(req: Request) {
 
   try {
     const checkout = await createCheckoutSession({
-      subjectId: subject.subjectId,
+      subjectId: subjectId,
       product: parsed.value.product,
       successPath: parsed.value.successPath,
       cancelPath: parsed.value.cancelPath,
