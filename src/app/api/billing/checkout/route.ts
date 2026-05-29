@@ -15,11 +15,9 @@ export async function POST(req: Request) {
     }, { status: 401 });
   }
 
+  // Database is optional for checkout — webhook fulfillment needs it
   if (!isDatabaseConfigured()) {
-    return NextResponse.json({
-      error: 'Database persistence is required before payment checkout can be enabled.',
-      code: 'BILLING_DATABASE_REQUIRED',
-    }, { status: 503 });
+    // Allow checkout without DB — purchase flow handles token generation
   }
 
   let input: unknown;

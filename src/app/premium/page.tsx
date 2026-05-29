@@ -42,6 +42,14 @@ export default function PremiumPage() {
 
   useEffect(() => { checkAccess(); }, []);
 
+  // Auto-purchase token when returning from Stripe success
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('billing') === 'success') {
+      handleBuyDayPass();
+    }
+  }, []);
+
   const handleTokenSubmit = () => {
     const t = tokenInput.trim();
     if (!t) return;

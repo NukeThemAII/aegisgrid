@@ -20,7 +20,7 @@ export type CheckoutRequestResult =
   | { ok: false; code: 'INVALID_JSON' | 'INVALID_PRODUCT' | 'INVALID_REDIRECT_PATH'; error: string };
 
 const PRODUCTS = new Set<StripeProduct>(['pro_monthly', 'pro_yearly', 'report_pack']);
-const DEFAULT_SUCCESS_PATH = '/?billing=success';
+const DEFAULT_SUCCESS_PATH = '/premium?billing=success';
 const DEFAULT_CANCEL_PATH = '/?billing=cancelled';
 
 function positiveIntEnv(name: string, fallback: number): number {

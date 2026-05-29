@@ -15,9 +15,9 @@ export async function GET() {
   const stripeConfigured = Boolean(
     process.env.STRIPE_SECRET_KEY &&
     process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY &&
-    process.env.STRIPE_WEBHOOK_SECRET &&
     process.env.STRIPE_PRICE_PRO_MONTHLY,
   );
+  const stripeWebhookConfigured = Boolean(process.env.STRIPE_WEBHOOK_SECRET);
 
   const stripeLiveMode = process.env.STRIPE_LIVE_MODE === 'true';
 
@@ -55,7 +55,9 @@ export async function GET() {
         configured: stripeConfigured,
         live_mode: stripeLiveMode,
         // What's needed for stripe to work
-        missing: stripeConfigured ? [] : [
+        missing: stripeConfigured ? (
+          stripeWebhookConfigured ? [] : ['STRIPE_WEBHOOK_SECRET (needed for auto-fulfillment)']
+        ) : [
           !process.env.STRIPE_SECRET_KEY && 'STRIPE_SECRET_KEY',
           !process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY && 'NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY',
           !process.env.STRIPE_WEBHOOK_SECRET && 'STRIPE_WEBHOOK_SECRET',
