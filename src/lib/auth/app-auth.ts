@@ -77,6 +77,19 @@ function subjectEntitlements(subjectId: string): string[] {
 }
 
 export function parseAppSubject(req: Request): AppSubject {
+  // Dev mode: password cookie = full premium access
+  const appPw = process.env.APP_ACCESS_PASSWORD?.trim();
+  if (appPw) {
+    const cookieHeader = req.headers.get('cookie') || '';
+    const devCookie = cookieHeader.split(';').find(c => c.trim().startsWith('aegisgrid_access='));
+    if (devCookie) {
+      const val = devCookie.split('=')[1]?.trim();
+      if (val === appPw) {
+        return { role: 'admin', subjectId: 'dev', entitlements: ['*'] };
+      }
+    }
+  }
+
   const token = extractBearerToken(req);
 
   if (!token) {
