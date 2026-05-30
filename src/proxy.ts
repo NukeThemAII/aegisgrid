@@ -59,13 +59,29 @@ function validateCsrf(request: NextRequest): { allowed: boolean; reason?: string
     if (!val) return false;
     try {
       const u = new URL(val);
-      const base = `${u.protocol}//${u.host}`;
-      return allowedOrigins.some(a => a.replace(/\/$/, '') === base.replace(/\/$/, ''));
+      // Compare without port for flexibility (covers 3443, 3004, etc.)
+      const originBase = `${u.protocol}//${u.hostname}${u.port ? ':' + u.port : ''}`;
+      return allowedOrigins.some(a => {
+        try {
+          const au = new URL(a);
+          const allowedBase = `${au.protocol}//${au.hostname}${au.port ? ':' + au.port : ''}`;
+          return originBase === allowedBase;
+        } catch { return false; }
+      });
     } catch { return false; }
   };
 
   if (origin && checkOrigin(origin)) return { allowed: true };
   if (referer && checkOrigin(referer)) return { allowed: true };
+
+  // Allow the request's own host as a valid origin (self-referencing)
+  const reqHost = request.headers.get('host');
+  if (reqHost && (origin || referer)) {
+    try {
+      const originUrl = new URL(origin || referer || '');
+      if (originUrl.hostname === reqHost.split(':')[0]) return { allowed: true };
+    } catch {}
+  }
 
   // Server-to-server requests (no Origin/Referer, JSON content-type): allow
   const contentType = request.headers.get('content-type') || '';
