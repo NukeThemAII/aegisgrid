@@ -64,12 +64,16 @@ export default function PremiumPage() {
 
   const handleStripeCheckout = async () => {
     const t = localStorage.getItem('aegisgrid_token');
-    const headers: Record<string, string> = {};
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (t) headers['Authorization'] = `Bearer ${t}`;
     try {
-      const res = await fetch('/api/billing/checkout', { method: 'POST', headers });
+      const res = await fetch('/api/billing/checkout', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ product: 'pro_monthly' }),
+      });
       const data = await res.json();
-      if (data.url) window.location.href = data.url;
+      if (data.checkout?.url) window.location.href = data.checkout.url;
       else setTokenError(data.error || 'Checkout unavailable — Stripe not configured');
     } catch {
       setTokenError('Checkout request failed');
